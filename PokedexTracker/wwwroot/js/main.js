@@ -1,0 +1,1 @@
+document.getElementById("app").innerHTML = "Your Pokédex app is running!";
