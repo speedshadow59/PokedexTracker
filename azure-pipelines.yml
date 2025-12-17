@@ -34,6 +34,6 @@ steps:
 # Step 6: Deploy to Azure App Service
 - task: AzureWebApp@1
   inputs:
-    azureSubscription: '<your-service-connection>'   # set up in DevOps Project Settings
-    appName: '<your-app-service-name>'               # the App Service you created in Azure
+    azureSubscription: '<AzureRMn>'   # set up in DevOps Project Settings
+    appName: '<pokedextracker>'               # the App Service you created in Azure
     package: '$(Build.ArtifactStagingDirectory)'
