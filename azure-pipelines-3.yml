@@ -1,0 +1,39 @@
+trigger:
+- main   # run pipeline when you push to main branch
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+# Step 1: Install .NET SDK
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '8.x'
+    installationPath: $(Agent.ToolsDirectory)/dotnet
+
+# Step 2: Restore dependencies
+- script: dotnet restore
+  displayName: 'Restore dependencies'
+
+# Step 3: Build project
+- script: dotnet build --configuration $(buildConfiguration)
+  displayName: 'Build project'
+
+# Step 4: Run tests (optional)
+- script: dotnet test --configuration $(buildConfiguration) --no-build
+  displayName: 'Run tests'
+
+# Step 5: Publish project
+- script: dotnet publish --configuration $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)
+  displayName: 'Publish project'
+
+# Step 6: Deploy to Azure App Service
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'AzureRM'          # ✅ your service connection name
+    appName: 'pokedextracker'             # ✅ your App Service name
+    package: '$(Build.ArtifactStagingDirectory)'
