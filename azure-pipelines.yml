@@ -5,36 +5,29 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  buildConfiguration: 'Release'
-  project: 'PokedexTracker/PokedexTracker.csproj'
+  app_location: 'PokedexTracker/frontend'
 
 steps:
-# Step 1: Install .NET SDK
-- task: UseDotNet@2
+# Step 1: Copy frontend files to staging directory
+- task: CopyFiles@2
+  displayName: 'Copy frontend files'
   inputs:
-    packageType: 'sdk'
-    version: '8.x'
-    installationPath: $(Agent.ToolsDirectory)/dotnet
+    SourceFolder: '$(app_location)'
+    Contents: '**'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
-# Step 2: Restore dependencies
-- script: dotnet restore $(project)
-  displayName: 'Restore dependencies'
-
-# Step 3: Build project
-- script: dotnet build $(project) --configuration $(buildConfiguration)
-  displayName: 'Build project'
-
-# Step 4: Run tests (optional)
-- script: dotnet test $(project) --configuration $(buildConfiguration) --no-build
-  displayName: 'Run tests'
-
-# Step 5: Publish project
-- script: dotnet publish $(project) --configuration $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)
-  displayName: 'Publish project'
-
-# Step 6: Deploy to Azure App Service
-- task: AzureWebApp@1
+# Step 2: Publish artifact for Azure Static Web App
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish frontend artifact'
   inputs:
-    azureSubscription: 'AzureRM'
-    appName: 'pokedextracker'
-    package: '$(Build.ArtifactStagingDirectory)'
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'frontend'
+    publishLocation: 'Container'
+
+# Step 3: Deploy to Azure Static Web App
+- task: AzureStaticWebApp@0
+  displayName: 'Deploy to Azure Static Web App'
+  inputs:
+    app_location: '$(app_location)'
+    output_location: ''
+    azure_static_web_apps_api_token: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)'

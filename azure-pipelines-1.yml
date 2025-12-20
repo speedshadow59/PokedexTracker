@@ -1,3 +1,6 @@
+# DEPRECATED - This file is for the old ASP.NET Core MVC deployment
+# Please use azure-pipelines.yml for Azure Static Web App deployment
+
 # ASP.NET Core
 # Build and test ASP.NET Core projects targeting .NET Core.
 # Add steps that run tests, create a NuGet package, deploy, and more:
