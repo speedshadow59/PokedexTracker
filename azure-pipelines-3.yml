@@ -15,12 +15,13 @@ jobs:
 - job: Restore
   displayName: 'Restore dependencies'
   steps:
+  - checkout: self
+
   - task: UseDotNet@2
     displayName: 'Install .NET 8 SDK'
     inputs:
       packageType: 'sdk'
       version: '8.x'
-      installationPath: $(Agent.ToolsDirectory)/dotnet
 
   - script: dotnet restore PokedexTracker.csproj
     displayName: 'dotnet restore'
@@ -37,6 +38,7 @@ jobs:
   displayName: 'Build project'
   dependsOn: Restore
   steps:
+  - checkout: self
   - download: current
     artifact: source
 
@@ -61,6 +63,7 @@ jobs:
   displayName: 'Run tests'
   dependsOn: Restore
   steps:
+  - checkout: self
   - download: current
     artifact: source
 
@@ -83,6 +86,7 @@ jobs:
   - Build
   - Test
   steps:
+  - checkout: self
   - download: current
     artifact: source
 
@@ -98,6 +102,6 @@ jobs:
   - task: AzureWebApp@1
     displayName: 'Deploy to Azure App Service'
     inputs:
-      azureSubscription: 'AzureRM'          # your service connection name
-      appName: 'pokedextracker'             # your App Service name
+      azureSubscription: 'AzureRM'
+      appName: 'pokedextracker'
       package: '$(Build.ArtifactStagingDirectory)'
