@@ -78,6 +78,6 @@ stages:
 
     - task: AzureWebApp@1
       inputs:
-        azureSubscription: 'YOUR-SERVICE-CONNECTION-NAME'
+        azureSubscription: 'AzureRM'
         appName: 'pokedextracker'
         package: '$(publishDir)'
