@@ -1,13 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokédex Tracker</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
-    <h1>Welcome to Pokédex Tracker</h1>
-    <div id="app"></div>
+    <header class="site-header">
+        <div class="container">
+            <nav class="nav-bar">
+                <div class="nav-brand">
+                    <h1 class="logo">Pokédex Tracker</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li class="nav-item"><a href="#" class="nav-link active">Home</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link">Tracker</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link">Profile</a></li>
+                    <li class="nav-item"><a href="#" class="nav-link">Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <section class="hero">
+                <h2 class="hero-title">Welcome to Pokédex Tracker</h2>
+                <p class="hero-subtitle">Track your Living Dex completion progress</p>
+            </section>
+
+            <section class="tracker-section">
+                <div class="section-header">
+                    <h3 class="section-title">Your Pokémon Collection</h3>
+                    <div class="progress-indicator">
+                        <span class="progress-text">Progress: <strong>0/151</strong></span>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="pokemon-grid" class="pokemon-grid">
+                    <!-- Pokémon cards will be dynamically inserted here -->
+                </div>
+            </section>
+
+            <div id="app"></div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2024 Pokédex Tracker. Track your collection with ease.</p>
+        </div>
+    </footer>
+
     <script src="js/main.js"></script>
 </body>
 </html>

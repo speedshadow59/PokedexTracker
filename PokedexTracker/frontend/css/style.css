@@ -1,5 +1,422 @@
+/* ========================================
+   Global Reset & Base Styles
+   ======================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #3b4cca;
+    --primary-dark: #2a3a9a;
+    --accent-color: #ffcb05;
+    --bg-light: #f5f7fa;
+    --bg-white: #ffffff;
+    --text-primary: #2c3e50;
+    --text-secondary: #5a6c7d;
+    --border-color: #e1e8ed;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+    --transition: all 0.3s ease;
+}
+
+html {
+    font-size: 16px;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f2f2f2;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg-light);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ========================================
+   Container & Layout
+   ======================================== */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
+}
+
+.main-content {
+    flex: 1;
+    padding: 40px 0;
+}
+
+/* ========================================
+   Header & Navigation
+   ======================================== */
+.site-header {
+    background-color: var(--bg-white);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+}
+
+.nav-brand .logo {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.nav-menu {
+    display: flex;
+    list-style: none;
+    gap: 8px;
+}
+
+.nav-item {
+    margin: 0;
+}
+
+.nav-link {
+    display: block;
+    padding: 10px 20px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.nav-link:hover {
+    background-color: var(--bg-light);
+    color: var(--primary-color);
+}
+
+.nav-link.active {
+    background-color: var(--primary-color);
+    color: var(--bg-white);
+}
+
+/* ========================================
+   Hero Section
+   ======================================== */
+.hero {
     text-align: center;
+    padding: 60px 0 40px;
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+/* ========================================
+   Tracker Section
+   ======================================== */
+.tracker-section {
+    margin-top: 40px;
+}
+
+.section-header {
+    background-color: var(--bg-white);
+    padding: 24px 28px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+/* Progress Indicator */
+.progress-indicator {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.progress-text {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.progress-text strong {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 12px;
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+    border-radius: 8px;
+    transition: width 0.5s ease;
+}
+
+/* ========================================
+   Pokémon Grid
+   ======================================== */
+.pokemon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    padding: 0;
+}
+
+.pokemon-card {
+    background-color: var(--bg-white);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    cursor: pointer;
+    text-align: center;
+    border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.pokemon-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+
+.pokemon-card.caught {
+    background-color: #f0f9ff;
+    border-color: var(--accent-color);
+}
+
+.pokemon-card.caught::after {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    background-color: var(--accent-color);
+    color: var(--primary-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.pokemon-number {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.pokemon-sprite {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 12px;
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+.pokemon-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: capitalize;
+    margin-bottom: 4px;
+}
+
+.pokemon-types {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.pokemon-type {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Type Colors */
+.type-normal { background-color: #A8A878; color: white; }
+.type-fire { background-color: #F08030; color: white; }
+.type-water { background-color: #6890F0; color: white; }
+.type-electric { background-color: #F8D030; color: #333; }
+.type-grass { background-color: #78C850; color: white; }
+.type-ice { background-color: #98D8D8; color: #333; }
+.type-fighting { background-color: #C03028; color: white; }
+.type-poison { background-color: #A040A0; color: white; }
+.type-ground { background-color: #E0C068; color: #333; }
+.type-flying { background-color: #A890F0; color: white; }
+.type-psychic { background-color: #F85888; color: white; }
+.type-bug { background-color: #A8B820; color: white; }
+.type-rock { background-color: #B8A038; color: white; }
+.type-ghost { background-color: #705898; color: white; }
+.type-dragon { background-color: #7038F8; color: white; }
+.type-dark { background-color: #705848; color: white; }
+.type-steel { background-color: #B8B8D0; color: #333; }
+.type-fairy { background-color: #EE99AC; color: white; }
+
+/* ========================================
+   Footer
+   ======================================== */
+.site-footer {
+    background-color: var(--bg-white);
+    border-top: 1px solid var(--border-color);
+    padding: 24px 0;
+    margin-top: 60px;
+    text-align: center;
+}
+
+.site-footer p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+@media screen and (max-width: 768px) {
+    .nav-bar {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .nav-menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .pokemon-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 16px;
+    }
+
+    .progress-indicator {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .section-header {
+        padding: 20px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .container {
+        padding: 0 16px;
+    }
+
+    .hero {
+        padding: 40px 0 30px;
+    }
+
+    .hero-title {
+        font-size: 1.75rem;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+    }
+
+    .pokemon-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+    }
+
+    .pokemon-card {
+        padding: 16px;
+    }
+
+    .pokemon-sprite {
+        width: 80px;
+        height: 80px;
+    }
+
+    .nav-brand .logo {
+        font-size: 1.5rem;
+    }
+
+    .nav-link {
+        padding: 8px 16px;
+        font-size: 0.875rem;
+    }
+}
+
+/* ========================================
+   Loading & Empty States
+   ======================================== */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.empty-state p {
+    font-size: 1rem;
 }
