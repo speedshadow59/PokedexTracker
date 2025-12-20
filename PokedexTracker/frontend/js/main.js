@@ -48,11 +48,21 @@ function renderPokemonGrid(pokemonList) {
     
     grid.innerHTML = pokemonList.map(pokemon => createPokemonCard(pokemon)).join('');
     
-    // Add click event listeners to toggle caught status
-    const cards = grid.querySelectorAll('.pokemon-card');
-    cards.forEach((card, index) => {
-        card.addEventListener('click', () => toggleCaught(index));
-    });
+    // Use event delegation for better performance
+    grid.addEventListener('click', handleCardClick);
+}
+
+// Handle card click using event delegation
+function handleCardClick(event) {
+    const card = event.target.closest('.pokemon-card');
+    if (!card) return;
+    
+    const pokemonId = parseInt(card.dataset.pokemonId);
+    const index = samplePokemon.findIndex(p => p.id === pokemonId);
+    
+    if (index !== -1) {
+        toggleCaught(index, card);
+    }
 }
 
 // Create individual Pokémon card HTML
@@ -77,9 +87,16 @@ function createPokemonCard(pokemon) {
 }
 
 // Toggle caught status
-function toggleCaught(index) {
+function toggleCaught(index, card) {
     samplePokemon[index].caught = !samplePokemon[index].caught;
-    renderPokemonGrid(samplePokemon);
+    
+    // Update only the specific card instead of re-rendering everything
+    if (samplePokemon[index].caught) {
+        card.classList.add('caught');
+    } else {
+        card.classList.remove('caught');
+    }
+    
     updateProgress(samplePokemon);
 }
 
