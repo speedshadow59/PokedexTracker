@@ -70,7 +70,7 @@ jobs:
       packageType: 'sdk'
       version: '8.x'
 
-  - script: dotnet test --configuration $(buildConfiguration) --no-build
+  - script: dotnet test PokedexTracker.csproj --configuration $(buildConfiguration) --no-build
     displayName: 'dotnet test'
 
 
@@ -98,6 +98,6 @@ jobs:
   - task: AzureWebApp@1
     displayName: 'Deploy to Azure App Service'
     inputs:
-      azureSubscription: 'AzureRM'
-      appName: 'pokedextracker'
+      azureSubscription: 'AzureRM'          # your service connection name
+      appName: 'pokedextracker'             # your App Service name
       package: '$(Build.ArtifactStagingDirectory)'
