@@ -6,7 +6,7 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
-  project: 'pokedextracker/pokedextracker/PokedexTracker.csproj'
+  project: 'PokedexTracker/PokedexTracker.csproj'
 
 steps:
 # Step 1: Install .NET SDK
