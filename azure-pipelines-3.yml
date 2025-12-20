@@ -1,5 +1,5 @@
 trigger:
-- main   # run pipeline when you push to main branch
+- main
 
 pool:
   vmImage: ubuntu-latest
@@ -7,33 +7,97 @@ pool:
 variables:
   buildConfiguration: 'Release'
 
-steps:
-# Step 1: Install .NET SDK
-- task: UseDotNet@2
-  inputs:
-    packageType: 'sdk'
-    version: '8.x'
-    installationPath: $(Agent.ToolsDirectory)/dotnet
+jobs:
 
-# Step 2: Restore dependencies
-- script: dotnet restore
+# -------------------------
+# Job 1: Restore
+# -------------------------
+- job: Restore
   displayName: 'Restore dependencies'
+  steps:
+  - task: UseDotNet@2
+    displayName: 'Install .NET 8 SDK'
+    inputs:
+      packageType: 'sdk'
+      version: '8.x'
+      installationPath: $(Agent.ToolsDirectory)/dotnet
 
-# Step 3: Build project
-- script: dotnet build --configuration $(buildConfiguration)
+  - script: dotnet restore PokedexTracker.csproj
+    displayName: 'dotnet restore'
+
+  - publish: $(System.DefaultWorkingDirectory)
+    artifact: source
+    displayName: 'Publish source for other jobs'
+
+
+# -------------------------
+# Job 2: Build
+# -------------------------
+- job: Build
   displayName: 'Build project'
+  dependsOn: Restore
+  steps:
+  - download: current
+    artifact: source
 
-# Step 4: Run tests (optional)
-- script: dotnet test --configuration $(buildConfiguration) --no-build
+  - task: UseDotNet@2
+    displayName: 'Install .NET 8 SDK'
+    inputs:
+      packageType: 'sdk'
+      version: '8.x'
+
+  - script: dotnet build PokedexTracker.csproj --configuration $(buildConfiguration)
+    displayName: 'dotnet build'
+
+  - publish: $(Build.SourcesDirectory)
+    artifact: build_output
+    displayName: 'Publish build output'
+
+
+# -------------------------
+# Job 3: Test
+# -------------------------
+- job: Test
   displayName: 'Run tests'
+  dependsOn: Restore
+  steps:
+  - download: current
+    artifact: source
 
-# Step 5: Publish project
-- script: dotnet publish --configuration $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)
-  displayName: 'Publish project'
+  - task: UseDotNet@2
+    displayName: 'Install .NET 8 SDK'
+    inputs:
+      packageType: 'sdk'
+      version: '8.x'
 
-# Step 6: Deploy to Azure App Service
-- task: AzureWebApp@1
-  inputs:
-    azureSubscription: 'AzureRM'          # ✅ your service connection name
-    appName: 'pokedextracker'             # ✅ your App Service name
-    package: '$(Build.ArtifactStagingDirectory)'
+  - script: dotnet test --configuration $(buildConfiguration) --no-build
+    displayName: 'dotnet test'
+
+
+# -------------------------
+# Job 4: Publish + Deploy
+# -------------------------
+- job: Deploy
+  displayName: 'Publish and Deploy to Azure'
+  dependsOn:
+  - Build
+  - Test
+  steps:
+  - download: current
+    artifact: source
+
+  - task: UseDotNet@2
+    displayName: 'Install .NET 8 SDK'
+    inputs:
+      packageType: 'sdk'
+      version: '8.x'
+
+  - script: dotnet publish PokedexTracker.csproj --configuration $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)
+    displayName: 'dotnet publish'
+
+  - task: AzureWebApp@1
+    displayName: 'Deploy to Azure App Service'
+    inputs:
+      azureSubscription: 'AzureRM'
+      appName: 'pokedextracker'
+      package: '$(Build.ArtifactStagingDirectory)'
