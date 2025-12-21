@@ -137,6 +137,7 @@ See the [API Documentation](api/README.md) for detailed information about endpoi
 
 The backend provides the following REST API endpoints:
 
+- **GET /api/pokedex** - Get information about available regions (when no region specified)
 - **GET /api/pokedex?region=X** - Get all Pokémon for a specific region
 - **PUT /api/userdex** - Toggle caught status for a Pokémon
 - **POST /api/comments** - Save a comment for a Pokémon entry

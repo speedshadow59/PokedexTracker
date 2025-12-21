@@ -74,17 +74,31 @@ The API will be available at `http://localhost:7071/api`
 
 ### 1. GET /api/pokedex
 
-Returns all Pokémon for a selected region, sorted by Pokédex number.
+Returns all Pokémon for a selected region, sorted by Pokédex number. If no region is specified, returns information about available regions.
 
 **Query Parameters:**
-- `region` (required): Region name (`kanto`, `johto`, `hoenn`, `sinnoh`, `unova`, `kalos`, `alola`, `galar`)
+- `region` (optional): Region name (`kanto`, `johto`, `hoenn`, `sinnoh`, `unova`, `kalos`, `alola`, `galar`)
 
-**Example Request:**
+**Example Request (no region):**
+```bash
+GET /api/pokedex
+```
+
+**Example Response (no region):**
+```json
+{
+  "message": "Please specify a region using the ?region=<name> query parameter",
+  "availableRegions": ["kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar"],
+  "example": "/api/pokedex?region=kanto"
+}
+```
+
+**Example Request (with region):**
 ```bash
 GET /api/pokedex?region=kanto
 ```
 
-**Example Response:**
+**Example Response (with region):**
 ```json
 {
   "region": "kanto",
@@ -98,6 +112,16 @@ GET /api/pokedex?region=kanto
       "region": "kanto"
     }
   ]
+}
+```
+
+**Error Response (invalid region):**
+```json
+{
+  "error": "Invalid region: invalid_name",
+  "message": "The specified region does not exist",
+  "availableRegions": ["kanto", "johto", "hoenn", "sinnoh", "unova", "kalos", "alola", "galar"],
+  "example": "/api/pokedex?region=kanto"
 }
 ```
 
