@@ -17,10 +17,7 @@ async function connectToDatabase() {
     throw new Error('COSMOS_DB_CONNECTION_STRING is not set');
   }
 
-  const client = new MongoClient(connectionString, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+  const client = new MongoClient(connectionString);
 
   await client.connect();
   cachedDb = client.db(databaseName);
