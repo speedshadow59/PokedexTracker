@@ -20,9 +20,9 @@ PokedexTracker/
 │   ├── userdex/        # PUT endpoint for toggling caught status
 │   ├── comments/       # POST endpoint for saving comments
 │   ├── media/          # POST endpoint for media uploads
-│   └── shared/         # Shared utilities and helpers
-├── host.json           # Azure Functions host configuration
-├── package.json        # Node.js dependencies
+│   ├── shared/         # Shared utilities and helpers
+│   ├── host.json       # Azure Functions host configuration (MUST be in api/)
+│   └── package.json    # Node.js dependencies (MUST be in api/)
 └── local.settings.json.template  # Template for local development settings
 ```
 
@@ -61,6 +61,7 @@ The deployment workflow is in `.github/workflows/azure-static-web-apps-jolly-san
    - Push changes to the `main` branch to trigger automatic deployment via GitHub Actions
    - The workflow will deploy both frontend and API automatically
    - Azure Static Web Apps will detect the API in the `/api` folder and deploy the Functions
+   - **Important:** The `host.json` and `package.json` files must be inside the `api/` directory for the deployment to work correctly
 
 ### Legacy Files
 
@@ -102,21 +103,23 @@ To run the Azure Functions backend locally:
 npm install -g azure-functions-core-tools@4
 ```
 
-2. Install dependencies from the repository root:
+2. Install dependencies from the `api` directory:
 ```bash
+cd api
 npm install
 ```
 
-3. Configure `local.settings.json` with your connection strings (copy from `local.settings.json.template` and update values)
+3. Configure `local.settings.json` with your connection strings (copy from `local.settings.json.template` in the root and update values, then move to root or api directory)
 
-4. Start the Functions runtime from the repository root:
+4. Start the Functions runtime from the `api` directory:
 ```bash
+cd api
 func start
 ```
 
 The API will be available at `http://localhost:7071/api`
 
-**Note:** Azure Functions Core Tools will automatically detect the `/api` folder when run from the repository root.
+**Note:** Azure Functions Core Tools reads the `host.json` from the directory where you run `func start`.
 
 See the [API Documentation](api/README.md) for detailed information about endpoints and configuration.
 
