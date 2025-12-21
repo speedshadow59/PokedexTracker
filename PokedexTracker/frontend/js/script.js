@@ -28,6 +28,40 @@ function saveCaughtData(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// Load user's caught Pokemon data from backend
+async function loadUserCaughtData() {
+    try {
+        const userId = getUserId();
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex?userId=${userId}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            // Merge backend data with local storage
+            const localData = getCaughtData();
+            const mergedData = { ...localData };
+            
+            // Backend data takes precedence
+            if (data.pokemon && Array.isArray(data.pokemon)) {
+                data.pokemon.forEach(entry => {
+                    mergedData[entry.pokemonId] = {
+                        caught: entry.caught,
+                        shiny: entry.shiny || false,
+                        notes: entry.notes || '',
+                        screenshot: entry.screenshot || null,
+                        timestamp: entry.updatedAt ? new Date(entry.updatedAt).getTime() : Date.now()
+                    };
+                });
+            }
+            
+            saveCaughtData(mergedData);
+        }
+    } catch (error) {
+        console.log('Could not load user data from backend, using local storage:', error);
+        // If backend is not available, continue with local storage
+    }
+}
+
+
 // Initialize the app
 document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
@@ -89,10 +123,7 @@ async function fetchPokemonByRegion(offset, limit) {
     try {
         currentPokemonList = [];
         
-        // Generate Pokemon data based on region
-        // In a production environment, this would call the PokeAPI or backend API
-        // For now, we'll use a hybrid approach: try to fetch from API, fall back to generated data
-        
+        // Fetch Pokemon data using PokeAPI for GET operations
         for (let i = 1; i <= limit; i++) {
             const dexNumber = offset + i;
             const pokemon = await fetchPokemonDetails(dexNumber);
@@ -407,23 +438,94 @@ function finalizeSave(pokemonData) {
     caughtData[selectedPokemon.id] = pokemonData;
     saveCaughtData(caughtData);
     
-    // TODO: In a real implementation, this would call the backend API
-    // Example:
-    // await fetch('/api/pokemon/caught', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({
-    //         userId: getUserId(),
-    //         pokemonId: selectedPokemon.id,
-    //         data: pokemonData
-    //     })
-    // });
+    // Call backend API to sync data
+    syncPokemonToBackend(selectedPokemon.id, pokemonData);
     
     // Update UI
     renderPokemonGrid();
     updateProgress();
     closeModal();
 }
+
+// Sync Pokemon data to backend
+async function syncPokemonToBackend(pokemonId, pokemonData) {
+    try {
+        const userId = getUserId();
+        
+        // Prepare request body
+        const requestBody = {
+            userId: userId,
+            pokemonId: pokemonId,
+            caught: pokemonData.caught,
+            shiny: pokemonData.shiny,
+            notes: pokemonData.notes
+        };
+        
+        // Upload screenshot first if it's a new base64 image
+        if (pokemonData.screenshot && pokemonData.screenshot.startsWith('data:')) {
+            const screenshotUrl = await uploadScreenshotToBackend(pokemonId, pokemonData.screenshot);
+            if (screenshotUrl) {
+                requestBody.screenshot = screenshotUrl;
+            }
+        } else if (pokemonData.screenshot) {
+            // Existing screenshot URL
+            requestBody.screenshot = pokemonData.screenshot;
+        }
+        
+        // Call backend API to save Pokemon data
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+            console.error('Failed to sync to backend:', await response.text());
+        } else {
+            console.log('Successfully synced to backend');
+        }
+    } catch (error) {
+        console.error('Error syncing to backend:', error);
+        // Continue anyway - local storage will preserve the data
+    }
+}
+
+// Upload screenshot to backend
+async function uploadScreenshotToBackend(pokemonId, base64Data) {
+    try {
+        const userId = getUserId();
+        
+        // Extract content type from base64 string
+        const matches = base64Data.match(/^data:(image\/\w+);base64,/);
+        const contentType = matches ? matches[1] : 'image/png';
+        
+        const requestBody = {
+            userId: userId,
+            pokemonId: pokemonId,
+            file: base64Data,
+            fileName: `pokemon_${pokemonId}_screenshot.png`,
+            contentType: contentType
+        };
+        
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/media`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return data.url;
+        } else {
+            console.error('Failed to upload screenshot:', await response.text());
+            return null;
+        }
+    } catch (error) {
+        console.error('Error uploading screenshot:', error);
+        return null;
+    }
+}
+
 
 function uncatchPokemon() {
     if (!selectedPokemon) return;
@@ -436,19 +538,40 @@ function uncatchPokemon() {
     delete caughtData[selectedPokemon.id];
     saveCaughtData(caughtData);
     
-    // TODO: In a real implementation, this would call the backend API
-    // Example:
-    // await fetch(`/api/pokemon/caught/${selectedPokemon.id}`, {
-    //     method: 'DELETE',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ userId: getUserId() })
-    // });
+    // Call backend API to remove caught status
+    uncatchPokemonOnBackend(selectedPokemon.id);
     
     // Update UI
     renderPokemonGrid();
     updateProgress();
     closeModal();
 }
+
+// Remove caught Pokemon from backend
+async function uncatchPokemonOnBackend(pokemonId) {
+    try {
+        const userId = getUserId();
+        
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: userId,
+                pokemonId: pokemonId,
+                caught: false
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('Failed to uncatch on backend:', await response.text());
+        } else {
+            console.log('Successfully uncaught on backend');
+        }
+    } catch (error) {
+        console.error('Error uncatching on backend:', error);
+    }
+}
+
 
 function updateProgress() {
     const caughtData = getCaughtData();
