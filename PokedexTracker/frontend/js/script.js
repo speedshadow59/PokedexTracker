@@ -66,6 +66,49 @@ async function loadUserCaughtData() {
 document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
     updateProgress();
+    loadFromURL();
+});
+
+// Load region from URL if present
+function loadFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const region = urlParams.get('region');
+    
+    if (region) {
+        const regionBtn = document.querySelector(`[data-region="${region}"]`);
+        if (regionBtn) {
+            regionBtn.click();
+        }
+    }
+}
+
+// Handle browser back/forward buttons
+window.addEventListener('popstate', (event) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const region = urlParams.get('region');
+    
+    if (region) {
+        const regionBtn = document.querySelector(`[data-region="${region}"]`);
+        if (regionBtn) {
+            const offset = parseInt(regionBtn.dataset.offset);
+            const limit = parseInt(regionBtn.dataset.limit);
+            
+            currentRegion = region;
+            document.querySelector('.region-selector').style.display = 'none';
+            document.getElementById('pokedexSection').style.display = 'block';
+            document.getElementById('regionTitle').textContent = regionBtn.textContent + ' Pokédex';
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('pokemonGrid').innerHTML = '';
+            
+            fetchPokemonByRegion(offset, limit);
+        }
+    } else {
+        // No region in URL, show region selector
+        document.getElementById('pokedexSection').style.display = 'none';
+        document.querySelector('.region-selector').style.display = 'block';
+        currentRegion = null;
+        currentPokemonList = [];
+    }
 });
 
 function setupEventListeners() {
@@ -76,6 +119,11 @@ function setupEventListeners() {
     
     // Back button
     document.getElementById('backBtn').addEventListener('click', () => {
+        // Remove region from URL
+        const url = new URL(window.location);
+        url.searchParams.delete('region');
+        window.history.pushState({}, '', url);
+        
         document.getElementById('pokedexSection').style.display = 'none';
         document.querySelector('.region-selector').style.display = 'block';
         currentRegion = null;
@@ -105,6 +153,11 @@ async function handleRegionClick(e) {
     const limit = parseInt(btn.dataset.limit);
     
     currentRegion = region;
+    
+    // Update URL with selected region
+    const url = new URL(window.location);
+    url.searchParams.set('region', region);
+    window.history.pushState({ region, offset, limit }, '', url);
     
     // Update UI
     document.querySelector('.region-selector').style.display = 'none';
