@@ -30,7 +30,13 @@ npm install
 
 ### 2. Configure Local Settings
 
-Update `local.settings.json` with your connection strings:
+Create a `local.settings.json` file from the template:
+
+```bash
+cp local.settings.json.template local.settings.json
+```
+
+Then update `local.settings.json` with your connection strings:
 
 ```json
 {
@@ -48,6 +54,8 @@ Update `local.settings.json` with your connection strings:
   }
 }
 ```
+
+**Note:** The `local.settings.json` file is excluded from version control to protect sensitive connection strings.
 
 ### 3. Run Locally
 
