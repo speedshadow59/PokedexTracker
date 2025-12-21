@@ -6,32 +6,38 @@ This project has been migrated from an ASP.NET Core MVC App Service to an Azure 
 
 ```
 PokedexTracker/
-├── frontend/          # Static web app files
-│   ├── index.html     # Main HTML file
-│   ├── css/           # Stylesheets
-│   ├── js/            # JavaScript files
-│   ├── lib/           # Third-party libraries (Bootstrap, jQuery, etc.)
-│   └── favicon.ico    # Site icon
-└── api/               # Azure Functions backend
-    ├── pokedex/       # GET endpoint for Pokemon by region
-    ├── userdex/       # PUT endpoint for toggling caught status
-    ├── comments/      # POST endpoint for saving comments
-    ├── media/         # POST endpoint for media uploads
-    └── shared/        # Shared utilities and helpers
+├── .github/
+│   └── workflows/      # GitHub Actions for deployment
+├── PokedexTracker/
+│   └── frontend/       # Static web app files
+│       ├── index.html  # Main HTML file
+│       ├── css/        # Stylesheets
+│       ├── js/         # JavaScript files
+│       ├── lib/        # Third-party libraries (Bootstrap, jQuery, etc.)
+│       └── favicon.ico # Site icon
+├── api/                # Azure Functions backend (at root level)
+│   ├── pokedex/        # GET endpoint for Pokemon by region
+│   ├── userdex/        # PUT endpoint for toggling caught status
+│   ├── comments/       # POST endpoint for saving comments
+│   ├── media/          # POST endpoint for media uploads
+│   └── shared/         # Shared utilities and helpers
+├── host.json           # Azure Functions host configuration
+├── package.json        # Node.js dependencies
+└── local.settings.json.template  # Template for local development settings
 ```
 
 ## Deployment
 
-The project is configured to deploy to Azure Static Web Apps using Azure Pipelines.
+The project is configured to deploy to Azure Static Web Apps using GitHub Actions.
 
-### Azure Pipeline Configuration
+### GitHub Actions Configuration
 
-The main pipeline configuration is in `azure-pipelines.yml` at the root level.
+The deployment workflow is in `.github/workflows/azure-static-web-apps-jolly-sand-089c0af03.yml`.
 
 **Key Configuration:**
 - **App Location:** `PokedexTracker/frontend`
-- **API Location:** `api`
-- **Output Location:** (empty - no build step required for basic static content)
+- **API Location:** `api` *(at repository root)*
+- **Output Location:** `.` (no build step required for static content)
 
 ### Deployment Steps
 
@@ -42,8 +48,6 @@ The main pipeline configuration is in `azure-pipelines.yml` at the root level.
    - Event Grid Topic (optional, for event notifications)
 
 2. **Configure Azure Static Web App:**
-   - Get the deployment token from your Static Web App in Azure Portal
-   - Add the token as a pipeline variable named `AZURE_STATIC_WEB_APPS_API_TOKEN`
    - Configure application settings (environment variables) in Azure Portal:
      - `COSMOS_DB_CONNECTION_STRING`
      - `COSMOS_DB_DATABASE_NAME`
@@ -54,8 +58,9 @@ The main pipeline configuration is in `azure-pipelines.yml` at the root level.
      - `EVENT_GRID_TOPIC_KEY` (optional)
 
 3. **Deploy:**
-   - Push changes to the `main` branch to trigger automatic deployment
-   - The pipeline will deploy both frontend and API automatically
+   - Push changes to the `main` branch to trigger automatic deployment via GitHub Actions
+   - The workflow will deploy both frontend and API automatically
+   - Azure Static Web Apps will detect the API in the `/api` folder and deploy the Functions
 
 ### Legacy Files
 
@@ -97,21 +102,21 @@ To run the Azure Functions backend locally:
 npm install -g azure-functions-core-tools@4
 ```
 
-2. Install dependencies:
+2. Install dependencies from the repository root:
 ```bash
-cd api
 npm install
 ```
 
-3. Configure `api/local.settings.json` with your connection strings (see `api/README.md` for details)
+3. Configure `local.settings.json` with your connection strings (copy from `local.settings.json.template` and update values)
 
-4. Start the Functions runtime:
+4. Start the Functions runtime from the repository root:
 ```bash
-cd api
 func start
 ```
 
 The API will be available at `http://localhost:7071/api`
+
+**Note:** Azure Functions Core Tools will automatically detect the `/api` folder when run from the repository root.
 
 See the [API Documentation](api/README.md) for detailed information about endpoints and configuration.
 
