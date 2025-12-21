@@ -11,28 +11,80 @@
 <header class="header">
     <div class="container">
         <h1>Pokédex Tracker</h1>
+        <div class="progress-container">
+            <div class="progress-text">Caught: <strong id="progressCount">0/0</strong></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
     </div>
 </header>
 
 <main class="container">
 
-    <section class="add-form">
-        <h2>Add Pokémon</h2>
-        <form id="pokemonForm">
-            <input type="text" id="name" placeholder="Name" required>
-            <input type="text" id="type" placeholder="Type" required>
-            <textarea id="description" placeholder="Description"></textarea>
-            <input type="file" id="image" accept="image/*" required>
-            <button type="submit">Add Pokémon</button>
-        </form>
+    <section class="region-selector">
+        <h2>Select a Region</h2>
+        <div class="region-grid" id="regionGrid">
+            <button class="region-btn" data-region="kanto" data-offset="0" data-limit="151">Kanto (Gen I)</button>
+            <button class="region-btn" data-region="johto" data-offset="151" data-limit="100">Johto (Gen II)</button>
+            <button class="region-btn" data-region="hoenn" data-offset="251" data-limit="135">Hoenn (Gen III)</button>
+            <button class="region-btn" data-region="sinnoh" data-offset="386" data-limit="107">Sinnoh (Gen IV)</button>
+            <button class="region-btn" data-region="unova" data-offset="493" data-limit="156">Unova (Gen V)</button>
+            <button class="region-btn" data-region="kalos" data-offset="649" data-limit="72">Kalos (Gen VI)</button>
+            <button class="region-btn" data-region="alola" data-offset="721" data-limit="88">Alola (Gen VII)</button>
+            <button class="region-btn" data-region="galar" data-offset="809" data-limit="89">Galar (Gen VIII)</button>
+        </div>
     </section>
 
-    <section>
-        <h2>Your Pokédex</h2>
+    <section id="pokedexSection" class="pokedex-section" style="display: none;">
+        <div class="section-header">
+            <h2 id="regionTitle">Pokédex</h2>
+            <button class="back-btn" id="backBtn">← Back to Regions</button>
+        </div>
         <div id="pokemonGrid" class="pokemon-grid"></div>
+        <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading Pokémon...</p>
+        </div>
     </section>
 
 </main>
+
+<!-- Pokemon Detail Modal -->
+<div id="pokemonModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" id="closeModal">&times;</span>
+        <div class="modal-body">
+            <div class="modal-left">
+                <img id="modalSprite" src="" alt="Pokemon sprite" class="modal-sprite">
+                <h2 id="modalName" class="modal-name"></h2>
+                <p id="modalNumber" class="modal-number"></p>
+                <div class="modal-types" id="modalTypes"></div>
+            </div>
+            <div class="modal-right">
+                <div class="form-group">
+                    <label for="shinyToggle" class="checkbox-label">
+                        <input type="checkbox" id="shinyToggle">
+                        <span>Shiny</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="catchNotes">Notes:</label>
+                    <textarea id="catchNotes" placeholder="Add notes about how you caught this Pokémon..." rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="screenshotUpload">Screenshot:</label>
+                    <input type="file" id="screenshotUpload" accept="image/*">
+                    <div id="screenshotPreview" class="screenshot-preview"></div>
+                </div>
+                <div class="modal-actions">
+                    <button id="saveBtn" class="save-btn">Save</button>
+                    <button id="uncatchBtn" class="uncatch-btn">Mark as Uncaught</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="js/script.js"></script>
 </body>
