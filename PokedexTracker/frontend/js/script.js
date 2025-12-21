@@ -1,14 +1,29 @@
 // Store Pokémon data in localStorage
 const STORAGE_KEY = 'pokedexTracker';
+let isEditMode = false;
+let editingPokemonId = null;
+
+// Utility function to escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     loadPokemon();
 
-    document.getElementById("pokemonForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        createPokemon();
-    });
+    document.getElementById("pokemonForm").addEventListener("submit", handleFormSubmit);
 });
+
+function handleFormSubmit(e) {
+    e.preventDefault();
+    if (isEditMode && editingPokemonId) {
+        updatePokemon(editingPokemonId);
+    } else {
+        createPokemon();
+    }
+}
 
 function loadPokemon() {
     console.log("Loading Pokémon...");
@@ -33,18 +48,54 @@ function renderPokemon(pokemonData) {
         return;
     }
     
-    grid.innerHTML = pokemonData.map(pokemon => `
-        <div class="pokemon-card" data-id="${pokemon.id}">
-            <img src="${pokemon.image}" alt="${pokemon.name}">
-            <h3>${pokemon.name}</h3>
-            <span class="type">${pokemon.type}</span>
-            <p class="description">${pokemon.description || ''}</p>
-            <div class="card-buttons">
-                <button class="edit-btn" onclick="editPokemon('${pokemon.id}')">Edit</button>
-                <button class="delete-btn" onclick="deletePokemon('${pokemon.id}')">Delete</button>
-            </div>
-        </div>
-    `).join('');
+    // Clear grid first
+    grid.innerHTML = '';
+    
+    // Create cards using DOM methods to prevent XSS
+    pokemonData.forEach(pokemon => {
+        const card = document.createElement('div');
+        card.className = 'pokemon-card';
+        card.dataset.id = pokemon.id;
+        
+        const img = document.createElement('img');
+        img.src = pokemon.image;
+        img.alt = escapeHtml(pokemon.name);
+        
+        const nameHeading = document.createElement('h3');
+        nameHeading.textContent = pokemon.name;
+        
+        const typeSpan = document.createElement('span');
+        typeSpan.className = 'type';
+        typeSpan.textContent = pokemon.type;
+        
+        const descPara = document.createElement('p');
+        descPara.className = 'description';
+        descPara.textContent = pokemon.description || '';
+        
+        const buttonDiv = document.createElement('div');
+        buttonDiv.className = 'card-buttons';
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = () => editPokemon(pokemon.id);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = () => deletePokemon(pokemon.id);
+        
+        buttonDiv.appendChild(editBtn);
+        buttonDiv.appendChild(deleteBtn);
+        
+        card.appendChild(img);
+        card.appendChild(nameHeading);
+        card.appendChild(typeSpan);
+        card.appendChild(descPara);
+        card.appendChild(buttonDiv);
+        
+        grid.appendChild(card);
+    });
 }
 
 function createPokemon() {
@@ -99,6 +150,10 @@ function editPokemon(id) {
         return;
     }
     
+    // Set edit mode
+    isEditMode = true;
+    editingPokemonId = id;
+    
     // Populate form with existing data
     document.getElementById("name").value = pokemon.name;
     document.getElementById("type").value = pokemon.type;
@@ -108,23 +163,12 @@ function editPokemon(id) {
     const imageInput = document.getElementById("image");
     imageInput.removeAttribute('required');
     
-    // Change form submit behavior
-    const form = document.getElementById("pokemonForm");
-    const submitBtn = form.querySelector('button[type="submit"]');
+    // Change form submit button text
+    const submitBtn = document.querySelector('#pokemonForm button[type="submit"]');
     submitBtn.textContent = "Update Pokémon";
     
-    // Create a new submit handler
-    const newSubmitHandler = (e) => {
-        e.preventDefault();
-        updatePokemon(id);
-    };
-    
-    // Remove old listener and add new one
-    form.removeEventListener("submit", newSubmitHandler);
-    form.addEventListener("submit", newSubmitHandler);
-    
     // Scroll to form
-    form.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById("pokemonForm").scrollIntoView({ behavior: 'smooth' });
 }
 
 function updatePokemon(id) {
@@ -200,6 +244,10 @@ function resetForm() {
     const form = document.getElementById("pokemonForm");
     form.reset();
     
+    // Reset edit mode
+    isEditMode = false;
+    editingPokemonId = null;
+    
     // Restore required attribute on image
     const imageInput = document.getElementById("image");
     imageInput.setAttribute('required', 'required');
@@ -207,11 +255,4 @@ function resetForm() {
     // Restore submit button text
     const submitBtn = form.querySelector('button[type="submit"]');
     submitBtn.textContent = "Add Pokémon";
-    
-    // Reset to original submit handler
-    form.replaceWith(form.cloneNode(true));
-    document.getElementById("pokemonForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        createPokemon();
-    });
 }
