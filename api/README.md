@@ -24,13 +24,14 @@ Azure Functions backend for the Pokédex Tracker application.
 ### 1. Install Dependencies
 
 ```bash
-cd api
 npm install
 ```
 
+**Note:** Dependencies are managed at the repository root level, not within the `/api` folder.
+
 ### 2. Configure Local Settings
 
-Create a `local.settings.json` file from the template:
+Create a `local.settings.json` file from the template in the root directory:
 
 ```bash
 cp local.settings.json.template local.settings.json
@@ -60,9 +61,10 @@ Then update `local.settings.json` with your connection strings:
 ### 3. Run Locally
 
 ```bash
-cd api
 func start
 ```
+
+**Note:** Run this command from the repository root. Azure Functions Core Tools will automatically detect the `/api` folder.
 
 The API will be available at `http://localhost:7071/api`
 
@@ -273,8 +275,15 @@ All events follow this structure:
 
 The API functions are automatically deployed as part of the Azure Static Web App deployment.
 
-1. Ensure the `api` folder is in the repository root
-2. Configure environment variables in Azure Portal:
+**Repository Structure:**
+- Frontend: `PokedexTracker/frontend`
+- API Functions: `api/` (at repository root)
+- Configuration files: `host.json`, `package.json`, `local.settings.json.template` (at repository root)
+
+**Setup Steps:**
+
+1. Ensure the GitHub Actions workflow has `api_location: "api"` configured
+2. Configure environment variables in Azure Portal (Configuration → Application settings):
    - `COSMOS_DB_CONNECTION_STRING`
    - `COSMOS_DB_DATABASE_NAME`
    - `COSMOS_DB_COLLECTION_NAME`
@@ -285,7 +294,8 @@ The API functions are automatically deployed as part of the Azure Static Web App
 
 3. The Azure Static Web Apps deployment action will automatically:
    - Deploy the frontend from `PokedexTracker/frontend`
-   - Deploy the API from `api`
+   - Deploy the API functions from `api/`
+   - Install dependencies from root `package.json`
 
 ## Testing
 
