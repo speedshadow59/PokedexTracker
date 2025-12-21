@@ -3,20 +3,22 @@ const { getPokemonByRegion, isValidRegion, getAllRegions } = require('../shared/
 /**
  * GET /api/pokedex?region=X
  * Returns all Pokémon for the selected region sorted by Dex number
+ * If no region is specified, returns information about available regions
  */
 module.exports = async function (context, req) {
   context.log('HTTP trigger function processed a GET request for pokedex.');
 
   const region = req.query.region;
 
-  // Validate region parameter
+  // If no region specified, return available regions with their metadata
   if (!region) {
     context.res = {
-      status: 400,
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: {
-        error: 'Missing required parameter: region',
-        availableRegions: getAllRegions()
+        message: 'Please specify a region using the ?region=<name> query parameter',
+        availableRegions: getAllRegions(),
+        example: '/api/pokedex?region=kanto'
       }
     };
     return;
@@ -24,11 +26,13 @@ module.exports = async function (context, req) {
 
   if (!isValidRegion(region)) {
     context.res = {
-      status: 400,
+      status: 404,
       headers: { 'Content-Type': 'application/json' },
       body: {
         error: `Invalid region: ${region}`,
-        availableRegions: getAllRegions()
+        message: 'The specified region does not exist',
+        availableRegions: getAllRegions(),
+        example: '/api/pokedex?region=kanto'
       }
     };
     return;
