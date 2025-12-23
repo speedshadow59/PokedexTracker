@@ -1,0 +1,34 @@
+{
+  "routes": [
+    {
+      "route": "/api/pokedex/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/health",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/userdex",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/userdex/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/media",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/media/*",
+      "allowedRoles": ["authenticated"]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "statusCode": 302,
+      "redirect": "/.auth/login/github"
+    }
+  }
+}
