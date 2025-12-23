@@ -65,6 +65,56 @@ body {
     width: 0%;
 }
 
+.auth-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #7c2d12;
+    padding: 18px 20px;
+    border-radius: 12px;
+    margin: 20px 0 10px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.auth-panel h2 {
+    margin: 0 0 6px 0;
+    font-size: 18px;
+}
+
+.auth-panel p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.auth-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.primary-btn,
+.secondary-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    color: white;
+}
+
+.secondary-btn {
+    background: #f3f4f6;
+    color: #111827;
+    border: 1px solid #e5e7eb;
+}
+
 /* Region Selector */
 .region-selector {
     background: white;

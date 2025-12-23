@@ -6,9 +6,14 @@ const USER_ID_KEY = 'pokedexUserId';
 let currentRegion = null;
 let currentPokemonList = [];
 let selectedPokemon = null;
+let currentUserPrincipal = null;
 
 // Initialize user ID if not exists
 function getUserId() {
+    if (currentUserPrincipal && currentUserPrincipal.userId) {
+        localStorage.setItem(USER_ID_KEY, currentUserPrincipal.userId);
+        return currentUserPrincipal.userId;
+    }
     let userId = localStorage.getItem(USER_ID_KEY);
     if (!userId) {
         userId = 'user_' + Date.now();
@@ -70,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
     checkBackendStatus();
     // Refresh status periodically
     setInterval(checkBackendStatus, 60000);
+    fetchAndApplyCurrentUser();
 });
 
 // Load region from URL if present
@@ -145,6 +151,34 @@ async function checkBackendStatus() {
         el.style.background = '#f5f5f5';
         el.style.color = '#555';
         el.style.border = '1px solid #e0e0e0';
+    }
+}
+
+async function fetchAndApplyCurrentUser() {
+    try {
+        const res = await fetch('/.auth/me', { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            const principal = data && data.clientPrincipal ? data.clientPrincipal : null;
+            currentUserPrincipal = principal;
+            const userInfoEl = document.getElementById('userInfo');
+            const loginLink = document.getElementById('loginLink');
+            const logoutLink = document.getElementById('logoutLink');
+            const authPanel = document.getElementById('authPanel');
+            if (principal) {
+                userInfoEl.textContent = `Signed in as ${principal.userDetails || principal.userId} (${principal.identityProvider})`;
+                if (loginLink) loginLink.style.display = 'none';
+                if (logoutLink) logoutLink.style.display = 'inline-block';
+                if (authPanel) authPanel.style.display = 'none';
+            } else {
+                userInfoEl.textContent = 'Not signed in';
+                if (loginLink) loginLink.style.display = 'inline-block';
+                if (logoutLink) logoutLink.style.display = 'none';
+                if (authPanel) authPanel.style.display = 'flex';
+            }
+        }
+    } catch (_) {
+        // ignore
     }
 }
 
