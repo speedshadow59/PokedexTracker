@@ -834,15 +834,11 @@ async function uncatchPokemonOnBackend(pokemonId) {
         return;
     }
     try {
-        const userId = getUserId();
-        
         const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
-            method: 'PUT',
+            method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userId: userId,
-                pokemonId: pokemonId,
-                caught: false
+                pokemonId: pokemonId
             })
         });
         

@@ -1,17 +1,22 @@
 const { connectToDatabase, emitEvent, getClientPrincipal } = require('../shared/utils');
 
 /**
- * PUT /api/userdex
- * Toggles caught status for a Pokémon for the current user
+ * GET /api/userdex - Retrieve all caught Pokémon for authenticated user
+ * PUT /api/userdex - Create or update a caught Pokémon entry
+ * DELETE /api/userdex - Delete a caught Pokémon entry (hard delete)
  * 
- * Request Body:
+ * PUT Request Body:
  * {
- *   "userId": "user_123",
  *   "pokemonId": 25,
  *   "caught": true,
  *   "shiny": false,
  *   "notes": "Caught in Victory Road",
  *   "screenshot": "base64_or_url"
+ * }
+ * 
+ * DELETE Request Body:
+ * {
+ *   "pokemonId": 25
  * }
  */
 module.exports = async function (context, req) {
@@ -63,6 +68,83 @@ module.exports = async function (context, req) {
       };
       return;
     }
+  }
+
+  if (req.method === 'DELETE') {
+    context.log('HTTP trigger function processed a DELETE request for userdex.');
+    const { pokemonId } = req.body || {};
+    const userId = authenticatedUserId;
+
+    // Validate required parameters
+    if (!pokemonId) {
+      context.res = {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          error: 'Missing required parameter: pokemonId'
+        }
+      };
+      return;
+    }
+
+    try {
+      // Connect to Cosmos DB
+      const db = await connectToDatabase();
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+
+      // Delete entry
+      const result = await collection.deleteOne({
+        userId: userId,
+        pokemonId: parseInt(pokemonId)
+      });
+
+      if (result.deletedCount === 0) {
+        context.res = {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+          body: {
+            error: 'Not found',
+            message: 'Pokémon entry not found'
+          }
+        };
+        return;
+      }
+
+      // Emit Event Grid event
+      await emitEvent(
+        'PokedexTracker.UserDex.Deleted',
+        `userdex/${userId}/${pokemonId}`,
+        {
+          userId: userId,
+          pokemonId: parseInt(pokemonId),
+          action: 'deleted',
+          timestamp: new Date()
+        }
+      );
+
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          success: true,
+          message: 'Pokémon deleted successfully',
+          pokemonId: parseInt(pokemonId)
+        }
+      };
+
+    } catch (error) {
+      context.log.error('Error deleting userdex entry:', error);
+      
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          error: 'Internal server error',
+          message: error.message
+        }
+      };
+    }
+    return;
   }
 
   context.log('HTTP trigger function processed a PUT request for userdex.');
