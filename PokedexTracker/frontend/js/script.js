@@ -144,6 +144,16 @@ function setupEventListeners() {
     
     // Screenshot upload preview
     document.getElementById('screenshotUpload').addEventListener('change', handleScreenshotUpload);
+
+    // Export/Import local data
+    const exportBtn = document.getElementById('exportBtn');
+    const importFile = document.getElementById('importFile');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportLocalData);
+    }
+    if (importFile) {
+        importFile.addEventListener('change', importLocalDataFromFile);
+    }
 }
 
 async function handleRegionClick(e) {
@@ -211,6 +221,50 @@ async function fetchPokemonByRegion(offset, limit) {
         document.getElementById('loadingSpinner').style.display = 'none';
         document.getElementById('pokemonGrid').innerHTML = '<p style="text-align: center; color: #666;">Error loading Pokémon. Please try again.</p>';
     }
+}
+
+// Export local storage data to a JSON file
+function exportLocalData() {
+    const data = {
+        userId: getUserId(),
+        caught: getCaughtData()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pokedex-tracker-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Import local storage data from a JSON file
+function importLocalDataFromFile(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const json = JSON.parse(reader.result);
+            if (json && json.caught && typeof json.caught === 'object') {
+                saveCaughtData(json.caught);
+            }
+            if (json && json.userId) {
+                localStorage.setItem(USER_ID_KEY, json.userId);
+            }
+            updateProgress();
+            if (currentRegion) {
+                renderPokemonGrid();
+            }
+        } catch (err) {
+            console.error('Failed to import data:', err);
+        }
+    };
+    reader.readAsText(file);
+    // reset input so same file can be chosen again
+    event.target.value = '';
 }
 
 async function fetchPokemonDetails(dexNumber) {
