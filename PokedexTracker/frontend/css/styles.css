@@ -115,6 +115,16 @@ body {
     border: 1px solid #e5e7eb;
 }
 
+.auth-notice {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
 /* Region Selector */
 .region-selector {
     background: white;

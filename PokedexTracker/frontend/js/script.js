@@ -581,6 +581,8 @@ function openPokemonModal(pokemon) {
     // Show/hide uncatch button
     const uncatchBtn = document.getElementById('uncatchBtn');
     uncatchBtn.style.display = caughtData[pokemon.id] ? 'block' : 'none';
+
+    applyModalAuthState();
     
     modal.classList.add('show');
 }
@@ -591,6 +593,11 @@ function closeModal() {
 }
 
 function handleScreenshotUpload(e) {
+    if (!isAuthenticated()) {
+        e.target.value = '';
+        alert('Sign in to upload screenshots.');
+        return;
+    }
     const file = e.target.files[0];
     if (!file) return;
     
@@ -604,6 +611,11 @@ function handleScreenshotUpload(e) {
 
 async function savePokemonData() {
     if (!selectedPokemon) return;
+    if (!isAuthenticated()) {
+        alert('Sign in to mark as caught or save changes.');
+        closeModal();
+        return;
+    }
     
     const shiny = document.getElementById('shinyToggle').checked;
     const notes = document.getElementById('catchNotes').value.trim();
@@ -743,6 +755,11 @@ async function uploadScreenshotToBackend(pokemonId, base64Data) {
 
 function uncatchPokemon() {
     if (!selectedPokemon) return;
+    if (!isAuthenticated()) {
+        alert('Sign in to change caught status.');
+        closeModal();
+        return;
+    }
     
     if (!confirm('Are you sure you want to mark this Pokémon as uncaught?')) {
         return;
@@ -787,6 +804,23 @@ async function uncatchPokemonOnBackend(pokemonId) {
     } catch (error) {
         console.error('Error uncatching on backend:', error);
     }
+}
+
+function applyModalAuthState() {
+    const requireAuth = !isAuthenticated();
+    const authNotice = document.getElementById('modalAuthNotice');
+    const shinyToggle = document.getElementById('shinyToggle');
+    const catchNotes = document.getElementById('catchNotes');
+    const screenshotUpload = document.getElementById('screenshotUpload');
+    const saveBtn = document.getElementById('saveBtn');
+    const uncatchBtn = document.getElementById('uncatchBtn');
+
+    if (authNotice) authNotice.style.display = requireAuth ? 'block' : 'none';
+    if (shinyToggle) shinyToggle.disabled = requireAuth;
+    if (catchNotes) catchNotes.disabled = requireAuth;
+    if (screenshotUpload) screenshotUpload.disabled = requireAuth;
+    if (saveBtn) saveBtn.disabled = requireAuth;
+    if (uncatchBtn) uncatchBtn.disabled = requireAuth;
 }
 
 
