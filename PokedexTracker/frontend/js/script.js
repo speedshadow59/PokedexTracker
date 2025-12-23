@@ -8,6 +8,10 @@ let currentPokemonList = [];
 let selectedPokemon = null;
 let currentUserPrincipal = null;
 
+function isAuthenticated() {
+    return !!(currentUserPrincipal && currentUserPrincipal.userId);
+}
+
 // Initialize user ID if not exists
 function getUserId() {
     if (currentUserPrincipal && currentUserPrincipal.userId) {
@@ -125,6 +129,14 @@ async function checkBackendStatus() {
     try {
         const el = document.getElementById('backendStatus');
         if (!el) return;
+
+        if (!isAuthenticated()) {
+            el.textContent = 'Cloud Sync: Sign in required';
+            el.style.background = '#fef3c7';
+            el.style.color = '#92400e';
+            el.style.border = '1px solid #fcd34d';
+            return;
+        }
 
         const userId = getUserId();
         const controller = new AbortController();
@@ -630,8 +642,12 @@ function finalizeSave(pokemonData) {
     caughtData[selectedPokemon.id] = pokemonData;
     saveCaughtData(caughtData);
     
-    // Call backend API to sync data
-    syncPokemonToBackend(selectedPokemon.id, pokemonData);
+    // Call backend API to sync data only if authenticated
+    if (isAuthenticated()) {
+        syncPokemonToBackend(selectedPokemon.id, pokemonData);
+    } else {
+        console.log('Not signed in; saved locally only. Sign in to sync to cloud.');
+    }
     
     // Update UI
     renderPokemonGrid();
@@ -641,6 +657,9 @@ function finalizeSave(pokemonData) {
 
 // Sync Pokemon data to backend
 async function syncPokemonToBackend(pokemonId, pokemonData) {
+    if (!isAuthenticated()) {
+        return;
+    }
     try {
         const userId = getUserId();
         
@@ -684,6 +703,9 @@ async function syncPokemonToBackend(pokemonId, pokemonData) {
 
 // Upload screenshot to backend
 async function uploadScreenshotToBackend(pokemonId, base64Data) {
+    if (!isAuthenticated()) {
+        return null;
+    }
     try {
         const userId = getUserId();
         
@@ -741,6 +763,9 @@ function uncatchPokemon() {
 
 // Remove caught Pokemon from backend
 async function uncatchPokemonOnBackend(pokemonId) {
+    if (!isAuthenticated()) {
+        return;
+    }
     try {
         const userId = getUserId();
         
