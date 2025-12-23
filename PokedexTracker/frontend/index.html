@@ -60,8 +60,15 @@
 
     <section id="pokedexSection" class="pokedex-section" style="display: none;">
         <div class="section-header">
-            <h2 id="regionTitle">Pokédex</h2>
-            <button class="back-btn" id="backBtn">← Back to Regions</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                <div>
+                    <h2 id="regionTitle">Pokédex</h2>
+                </div>
+                <div style="flex: 1;">
+                    <input type="text" id="searchInput" placeholder="Search Pokémon..." class="search-input" />
+                </div>
+                <button class="back-btn" id="backBtn">← Back to Regions</button>
+            </div>
         </div>
         <div id="pokemonGrid" class="pokemon-grid"></div>
         <div id="loadingSpinner" class="loading-spinner" style="display: none;">
@@ -69,6 +76,33 @@
             <p>Loading Pokémon...</p>
         </div>
     </section>
+</main>
+
+<!-- Toast Notifications -->
+<div id="toastContainer" class="toast-container"></div>
+
+<script>
+// Toast notification system
+function showToast(message, type = 'success', duration = 3000) {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Auto remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+</script>
+
+<script src="js/config.js"></script>
+<script src="js/script.js"></script>
 
 </main>
 

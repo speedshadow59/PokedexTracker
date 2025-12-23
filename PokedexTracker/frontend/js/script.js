@@ -200,6 +200,12 @@ function setupEventListeners() {
         btn.addEventListener('click', handleRegionClick);
     });
     
+    // Search input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterPokemonBySearch);
+    }
+    
     // Back button
     document.getElementById('backBtn').addEventListener('click', () => {
         // Remove region from URL
@@ -211,6 +217,10 @@ function setupEventListeners() {
         document.querySelector('.region-selector').style.display = 'block';
         currentRegion = null;
         currentPokemonList = [];
+        
+        // Clear search
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.value = '';
     });
     
     // Modal close
@@ -236,6 +246,41 @@ function setupEventListeners() {
     }
     if (importFile) {
         importFile.addEventListener('change', importLocalDataFromFile);
+    }
+}
+
+// Filter Pokemon by search
+function filterPokemonBySearch(e) {
+    const searchTerm = e.target.value.toLowerCase();
+    const cards = document.querySelectorAll('.pokemon-card');
+    let visibleCount = 0;
+    
+    cards.forEach(card => {
+        const name = card.querySelector('.pokemon-name').textContent.toLowerCase();
+        const number = card.querySelector('.pokemon-number').textContent.toLowerCase();
+        
+        if (name.includes(searchTerm) || number.includes(searchTerm)) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    if (visibleCount === 0 && searchTerm) {
+        // Show empty state
+        let emptyMsg = document.getElementById('searchEmpty');
+        if (!emptyMsg) {
+            emptyMsg = document.createElement('div');
+            emptyMsg.id = 'searchEmpty';
+            emptyMsg.className = 'empty-state';
+            emptyMsg.innerHTML = '<p>No Pokémon found matching your search.</p>';
+            document.getElementById('pokemonGrid').after(emptyMsg);
+        }
+        emptyMsg.style.display = 'block';
+    } else {
+        const emptyMsg = document.getElementById('searchEmpty');
+        if (emptyMsg) emptyMsg.style.display = 'none';
     }
 }
 
@@ -654,11 +699,14 @@ function finalizeSave(pokemonData) {
     caughtData[selectedPokemon.id] = pokemonData;
     saveCaughtData(caughtData);
     
+    // Show success toast
+    showToast(`${selectedPokemon.name} caught! ✓`, 'success');
+    
     // Call backend API to sync data only if authenticated
     if (isAuthenticated()) {
         syncPokemonToBackend(selectedPokemon.id, pokemonData);
     } else {
-        console.log('Not signed in; saved locally only. Sign in to sync to cloud.');
+        showToast('Saved locally. Sign in to sync to cloud.', 'info');
     }
     
     // Update UI
@@ -703,12 +751,12 @@ async function syncPokemonToBackend(pokemonId, pokemonData) {
         });
         
         if (!response.ok) {
-            console.error('Failed to sync to backend:', await response.text());
+            showToast('Failed to sync to cloud. Check your connection.', 'error');
         } else {
-            console.log('Successfully synced to backend');
+            showToast('Synced to cloud!', 'success');
         }
     } catch (error) {
-        console.error('Error syncing to backend:', error);
+        showToast('Network error—data saved locally.', 'warning');
         // Continue anyway - local storage will preserve the data
     }
 }
@@ -741,13 +789,14 @@ async function uploadScreenshotToBackend(pokemonId, base64Data) {
         
         if (response.ok) {
             const data = await response.json();
+            showToast('Screenshot uploaded! 📷', 'success');
             return data.url;
         } else {
-            console.error('Failed to upload screenshot:', await response.text());
+            showToast('Failed to upload screenshot.', 'error');
             return null;
         }
     } catch (error) {
-        console.error('Error uploading screenshot:', error);
+        showToast('Upload error—saved locally.', 'error');
         return null;
     }
 }
@@ -756,8 +805,7 @@ async function uploadScreenshotToBackend(pokemonId, base64Data) {
 function uncatchPokemon() {
     if (!selectedPokemon) return;
     if (!isAuthenticated()) {
-        alert('Sign in to change caught status.');
-        closeModal();
+        showToast('Sign in to change caught status.', 'warning');
         return;
     }
     
@@ -768,6 +816,8 @@ function uncatchPokemon() {
     const caughtData = getCaughtData();
     delete caughtData[selectedPokemon.id];
     saveCaughtData(caughtData);
+    
+    showToast(`${selectedPokemon.name} marked as uncaught.`, 'info');
     
     // Call backend API to remove caught status
     uncatchPokemonOnBackend(selectedPokemon.id);
@@ -797,7 +847,7 @@ async function uncatchPokemonOnBackend(pokemonId) {
         });
         
         if (!response.ok) {
-            console.error('Failed to uncatch on backend:', await response.text());
+            showToast('Failed to sync uncatch to cloud.', 'error');
         } else {
             console.log('Successfully uncaught on backend');
         }
