@@ -75,6 +75,8 @@ module.exports = async function (context, req) {
     const { pokemonId } = req.body || {};
     const userId = authenticatedUserId;
 
+    context.log(`DELETE: userId=${userId}, pokemonId=${pokemonId}`);
+
     // Validate required parameters
     if (!pokemonId) {
       context.res = {
@@ -97,6 +99,8 @@ module.exports = async function (context, req) {
         userId: userId,
         pokemonId: parseInt(pokemonId)
       });
+
+      context.log(`DELETE result: deletedCount=${result.deletedCount}`);
 
       if (result.deletedCount === 0) {
         // Return 200 anyway (idempotent) - entry doesn't exist or already deleted
