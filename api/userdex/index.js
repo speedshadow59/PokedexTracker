@@ -99,12 +99,14 @@ module.exports = async function (context, req) {
       });
 
       if (result.deletedCount === 0) {
+        // Return 200 anyway (idempotent) - entry doesn't exist or already deleted
         context.res = {
-          status: 404,
+          status: 200,
           headers: { 'Content-Type': 'application/json' },
           body: {
-            error: 'Not found',
-            message: 'Pokémon entry not found'
+            success: true,
+            message: 'Pokémon deleted or not found (idempotent)',
+            pokemonId: parseInt(pokemonId)
           }
         };
         return;
