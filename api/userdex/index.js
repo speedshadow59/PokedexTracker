@@ -15,6 +15,53 @@ const { connectToDatabase, emitEvent } = require('../shared/utils');
  * }
  */
 module.exports = async function (context, req) {
+  if (req.method === 'GET') {
+    context.log('HTTP trigger function processed a GET request for userdex.');
+    const userId = (req.query && req.query.userId) || (req.body && req.body.userId);
+
+    if (!userId) {
+      context.res = {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Missing required parameter: userId' }
+      };
+      return;
+    }
+
+    try {
+      const db = await connectToDatabase();
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const cursor = collection.find({ userId: userId });
+      const items = await cursor.toArray();
+
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          userId: userId,
+          count: items.length,
+          pokemon: items.map(i => ({
+            pokemonId: i.pokemonId,
+            caught: i.caught,
+            shiny: i.shiny || false,
+            notes: i.notes || '',
+            screenshot: i.screenshot || null,
+            updatedAt: i.updatedAt || i.createdAt || null
+          }))
+        }
+      };
+      return;
+    } catch (error) {
+      context.log.error('Error fetching userdex:', error);
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Internal server error', message: error.message }
+      };
+      return;
+    }
+  }
+
   context.log('HTTP trigger function processed a PUT request for userdex.');
 
   const { userId, pokemonId, caught, shiny, notes, screenshot } = req.body || {};
