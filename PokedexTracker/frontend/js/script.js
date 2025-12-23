@@ -67,6 +67,9 @@ document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
     updateProgress();
     loadFromURL();
+    checkBackendStatus();
+    // Refresh status periodically
+    setInterval(checkBackendStatus, 60000);
 });
 
 // Load region from URL if present
@@ -110,6 +113,40 @@ window.addEventListener('popstate', (event) => {
         currentPokemonList = [];
     }
 });
+
+// Backend connectivity indicator
+async function checkBackendStatus() {
+    try {
+        const el = document.getElementById('backendStatus');
+        if (!el) return;
+
+        const userId = getUserId();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex?userId=${userId}`, { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+            el.textContent = 'Cloud Sync: Online';
+            el.style.background = '#e7f7ed';
+            el.style.color = '#1e7e34';
+            el.style.border = '1px solid #c6eed4';
+        } else {
+            el.textContent = 'Cloud Sync: Offline';
+            el.style.background = '#f5f5f5';
+            el.style.color = '#555';
+            el.style.border = '1px solid #e0e0e0';
+        }
+    } catch (err) {
+        const el = document.getElementById('backendStatus');
+        if (!el) return;
+        el.textContent = 'Cloud Sync: Offline';
+        el.style.background = '#f5f5f5';
+        el.style.color = '#555';
+        el.style.border = '1px solid #e0e0e0';
+    }
+}
 
 function setupEventListeners() {
     // Region buttons
