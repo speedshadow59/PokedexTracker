@@ -15,12 +15,14 @@ const { connectToDatabase, emitEvent, getClientPrincipal } = require('../shared/
  * }
  */
 module.exports = async function (context, req) {
+  context.log('Headers received:', JSON.stringify(req.headers, null, 2));
   const principal = getClientPrincipal(req);
+  context.log('Parsed principal:', principal);
   if (!principal || !principal.userId) {
     context.res = {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
-      body: { error: 'Unauthorized' }
+      body: { error: 'Unauthorized', receivedHeaders: Object.keys(req.headers) }
     };
     return;
   }
