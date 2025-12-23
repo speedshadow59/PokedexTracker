@@ -175,23 +175,37 @@ async function handleRegionClick(e) {
 async function fetchPokemonByRegion(offset, limit) {
     try {
         currentPokemonList = [];
-        
-        // Fetch Pokemon data using PokeAPI for GET operations
-        for (let i = 1; i <= limit; i++) {
-            const dexNumber = offset + i;
-            const pokemon = await fetchPokemonDetails(dexNumber);
-            if (pokemon) {
-                currentPokemonList.push(pokemon);
+
+        const batchSize = 20;
+        const spinnerTextEl = document.getElementById('loadingSpinner').querySelector('p');
+
+        for (let start = 1; start <= limit; start += batchSize) {
+            const end = Math.min(limit, start + batchSize - 1);
+            const batchPromises = [];
+
+            for (let i = start; i <= end; i++) {
+                const dexNumber = offset + i;
+                batchPromises.push(fetchPokemonDetails(dexNumber));
             }
+
+            const batchResults = await Promise.all(batchPromises);
+
+            batchResults.forEach(pokemon => {
+                if (pokemon) {
+                    currentPokemonList.push(pokemon);
+                }
+            });
+
+            if (spinnerTextEl) {
+                spinnerTextEl.textContent = 'Loading Pokémon... ' + currentPokemonList.length + '/' + limit;
+            }
+
+            renderPokemonGrid();
+            updateProgress();
         }
-        
-        // Hide loading spinner
+
         document.getElementById('loadingSpinner').style.display = 'none';
-        
-        // Render Pokemon grid
-        renderPokemonGrid();
-        updateProgress();
-        
+
     } catch (error) {
         console.error('Error fetching Pokemon:', error);
         document.getElementById('loadingSpinner').style.display = 'none';
