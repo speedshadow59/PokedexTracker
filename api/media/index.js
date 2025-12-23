@@ -1,4 +1,4 @@
-const { getBlobServiceClient, emitEvent } = require('../shared/utils');
+const { getBlobServiceClient, emitEvent, getClientPrincipal } = require('../shared/utils');
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -17,15 +17,26 @@ const { v4: uuidv4 } = require('uuid');
 module.exports = async function (context, req) {
   context.log('HTTP trigger function processed a POST request for media upload.');
 
-  const { userId, pokemonId, file, fileName, contentType } = req.body || {};
+  const principal = getClientPrincipal(req);
+  if (!principal || !principal.userId) {
+    context.res = {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+      body: { error: 'Unauthorized' }
+    };
+    return;
+  }
+
+  const userId = principal.userId;
+  const { pokemonId, file, fileName, contentType } = req.body || {};
 
   // Validate required parameters
-  if (!userId || !pokemonId || !file) {
+  if (!pokemonId || !file) {
     context.res = {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
       body: {
-        error: 'Missing required parameters: userId, pokemonId, and file'
+        error: 'Missing required parameters: pokemonId and file'
       }
     };
     return;

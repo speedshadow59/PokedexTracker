@@ -1,6 +1,7 @@
 const { MongoClient } = require('mongodb');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { EventGridPublisherClient, AzureKeyCredential } = require('@azure/eventgrid');
+const { Buffer } = require('buffer');
 
 // Cosmos DB (MongoDB API) Connection
 let cachedDb = null;
@@ -70,9 +71,22 @@ async function emitEvent(eventType, subject, data) {
   }
 }
 
+function getClientPrincipal(req) {
+  try {
+    const header = req.headers['x-ms-client-principal'];
+    if (!header) return null;
+    const decoded = Buffer.from(header, 'base64').toString('utf8');
+    return JSON.parse(decoded);
+  } catch (e) {
+    console.error('Failed to parse client principal:', e.message);
+    return null;
+  }
+}
+
 module.exports = {
   connectToDatabase,
   getBlobServiceClient,
   getEventGridClient,
-  emitEvent
+  emitEvent,
+  getClientPrincipal
 };

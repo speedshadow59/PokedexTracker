@@ -1,4 +1,4 @@
-const { connectToDatabase, emitEvent } = require('../shared/utils');
+const { connectToDatabase, emitEvent, getClientPrincipal } = require('../shared/utils');
 
 /**
  * PUT /api/userdex
@@ -15,18 +15,21 @@ const { connectToDatabase, emitEvent } = require('../shared/utils');
  * }
  */
 module.exports = async function (context, req) {
+  const principal = getClientPrincipal(req);
+  if (!principal || !principal.userId) {
+    context.res = {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+      body: { error: 'Unauthorized' }
+    };
+    return;
+  }
+
+  const authenticatedUserId = principal.userId;
+
   if (req.method === 'GET') {
     context.log('HTTP trigger function processed a GET request for userdex.');
-    const userId = (req.query && req.query.userId) || (req.body && req.body.userId);
-
-    if (!userId) {
-      context.res = {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: { error: 'Missing required parameter: userId' }
-      };
-      return;
-    }
+    const userId = authenticatedUserId;
 
     try {
       const db = await connectToDatabase();
@@ -64,15 +67,16 @@ module.exports = async function (context, req) {
 
   context.log('HTTP trigger function processed a PUT request for userdex.');
 
-  const { userId, pokemonId, caught, shiny, notes, screenshot } = req.body || {};
+  const { pokemonId, caught, shiny, notes, screenshot } = req.body || {};
+  const userId = authenticatedUserId;
 
   // Validate required parameters
-  if (!userId || !pokemonId) {
+  if (!pokemonId) {
     context.res = {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
       body: {
-        error: 'Missing required parameters: userId and pokemonId'
+        error: 'Missing required parameter: pokemonId'
       }
     };
     return;
