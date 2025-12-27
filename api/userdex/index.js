@@ -109,7 +109,9 @@ module.exports = async function (context, req) {
           
           // Extract blob name from URL (format: https://<account>.blob.core.windows.net/<container>/<blobName>)
           const blobUrl = existingDoc.screenshot;
-          const blobName = blobUrl.split('/').pop();
+          // Extract everything after the container name (includes userId/pokemonId/filename.png)
+          const urlParts = blobUrl.split(`/${containerName}/`);
+          const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
           
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
           await blockBlobClient.deleteIfExists();
