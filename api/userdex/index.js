@@ -1,4 +1,4 @@
-const { connectToDatabase, emitEvent, getClientPrincipal } = require('../shared/utils');
+const { connectToDatabase, emitEvent, getClientPrincipal, getBlobServiceClient } = require('../shared/utils');
 
 /**
  * GET /api/userdex - Retrieve all caught Pokémon for authenticated user
@@ -93,6 +93,32 @@ module.exports = async function (context, req) {
       // Connect to Cosmos DB
       const db = await connectToDatabase();
       const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+
+      // First, fetch the document to get the screenshot URL
+      const existingDoc = await collection.findOne({
+        userId: userId,
+        pokemonId: parseInt(pokemonId)
+      });
+
+      // Delete the blob if it exists
+      if (existingDoc && existingDoc.screenshot) {
+        try {
+          const blobServiceClient = getBlobServiceClient();
+          const containerName = process.env.BLOB_CONTAINER_NAME || 'pokemon-media';
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          
+          // Extract blob name from URL (format: https://<account>.blob.core.windows.net/<container>/<blobName>)
+          const blobUrl = existingDoc.screenshot;
+          const blobName = blobUrl.split('/').pop();
+          
+          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+          await blockBlobClient.deleteIfExists();
+          context.log(`Deleted blob: ${blobName}`);
+        } catch (blobError) {
+          context.log.warn('Error deleting blob (continuing with document delete):', blobError.message);
+          // Continue with document deletion even if blob deletion fails
+        }
+      }
 
       // Delete entry
       const result = await collection.deleteOne({
