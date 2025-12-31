@@ -1,6 +1,5 @@
 const { connectToDatabase, getClientPrincipal } = require('../shared/utils');
 const { REGIONS } = require('../shared/pokemonData');
-const { OpenAIClient, AzureKeyCredential } = require('@azure/openai');
 
 const MAX_ITEMS = 300;
 const DEFAULT_TOP_K = 20;
@@ -8,31 +7,14 @@ const POKE_API_BASE = 'https://pokeapi.co/api/v2/pokemon/';
 
 const pokemonCache = new Map();
 
-function buildOpenAIClient(context) {
-  const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-  const key = process.env.AZURE_OPENAI_KEY;
-  if (!endpoint || !key) return null;
-  try {
-    const apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2024-10-01-preview';
-    return new OpenAIClient(endpoint, new AzureKeyCredential(key), { apiVersion });
-  } catch (err) {
-    context.log.warn('Failed to init OpenAI client', err.message);
+function getSearchConfig() {
+  const endpoint = process.env.AZURE_SEARCH_ENDPOINT || process.env.AZURE_AI_SEARCH_ENDPOINT;
+  const apiKey = process.env.AZURE_SEARCH_KEY || process.env.AZURE_SEARCH_ADMIN_KEY;
+  const indexName = process.env.AZURE_SEARCH_INDEX || process.env.AZURE_AI_SEARCH_INDEX || 'userdex';
+  if (!endpoint || !apiKey) {
     return null;
   }
-}
-
-function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  if (normA === 0 || normB === 0) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  return { endpoint: endpoint.replace(/\/?$/, ''), apiKey, indexName };
 }
 
 function keywordScore(text, query) {
@@ -85,12 +67,6 @@ async function getPokemonMeta(pokemonId) {
   return meta;
 }
 
-async function embedTexts(client, deploymentName, inputs) {
-  if (!client) return null;
-  const result = await client.getEmbeddings(deploymentName, inputs);
-  return result.data.map(item => item.embedding);
-}
-
 function parseBoolean(value) {
   if (value === undefined || value === null) return undefined;
   if (typeof value === 'boolean') return value;
@@ -98,6 +74,83 @@ function parseBoolean(value) {
   if (normalized === 'true' || normalized === '1') return true;
   if (normalized === 'false' || normalized === '0') return false;
   return undefined;
+}
+
+function escapeFilterValue(value) {
+  return String(value).replace(/'/g, "''");
+}
+
+function buildSearchFilter(userId, regionFilter, caughtFilter, shinyFilter) {
+  const clauses = [`userId eq '${escapeFilterValue(userId)}'`];
+  if (regionFilter) {
+    clauses.push(`region eq '${escapeFilterValue(regionFilter)}'`);
+  }
+  if (caughtFilter !== undefined) {
+    clauses.push(`caught eq ${caughtFilter}`);
+  }
+  if (shinyFilter !== undefined) {
+    clauses.push(`shiny eq ${shinyFilter}`);
+  }
+  return clauses.join(' and ');
+}
+
+async function runAzureSearch(config, query, options, context) {
+  const { endpoint, apiKey, indexName } = config;
+  const filter = buildSearchFilter(options.userId, options.regionFilter, options.caughtFilter, options.shinyFilter);
+
+  const url = `${endpoint}/indexes/${indexName}/docs/search?api-version=2023-11-01`; // stable API version
+
+  const body = {
+    search: query || '*',
+    filter: filter || undefined,
+    top: options.topK,
+    queryType: 'simple',
+    searchMode: 'all',
+    select: [
+      'pokemonId',
+      'name',
+      'types',
+      'region',
+      'caught',
+      'shiny',
+      'notes',
+      'screenshot',
+      'sprite',
+      'spriteShiny',
+      'userId'
+    ]
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': apiKey
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Azure AI Search query failed: ${res.status} ${res.statusText} - ${text}`);
+  }
+
+  const data = await res.json();
+  const results = Array.isArray(data.value) ? data.value : [];
+
+  return results.map(doc => ({
+    pokemonId: doc.pokemonId,
+    name: doc.name || `pokemon-${doc.pokemonId}`,
+    sprite: doc.sprite,
+    spriteShiny: doc.spriteShiny || doc.sprite,
+    types: Array.isArray(doc.types) ? doc.types : [],
+    region: doc.region || inferRegionFromDex(doc.pokemonId),
+    caught: !!doc.caught,
+    shiny: !!doc.shiny,
+    notes: doc.notes || '',
+    screenshot: doc.screenshot || null,
+    similarity: doc['@search.score'] !== undefined ? Number(doc['@search.score'].toFixed(4)) : undefined
+  }));
 }
 
 module.exports = async function (context, req) {
@@ -118,6 +171,8 @@ module.exports = async function (context, req) {
   const shinyFilter = parseBoolean(req.query.shiny ?? req.body?.shiny);
   const topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
   const topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
+
+  const searchConfig = getSearchConfig();
 
   let collection;
   try {
@@ -192,43 +247,43 @@ module.exports = async function (context, req) {
   }
 
   let usedAI = false;
-  let scored = [];
-  const openAIClient = buildOpenAIClient(context);
-  const embeddingDeployment = process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || process.env.AZURE_OPENAI_EMBEDDING_MODEL || 'text-embedding-3-large';
+  let results = [];
 
-  if (openAIClient) {
+  if (searchConfig) {
     try {
-      const inputs = [query, ...items.map(i => i.embeddingText)];
-      const embeddings = await embedTexts(openAIClient, embeddingDeployment, inputs);
-      if (embeddings && embeddings.length === inputs.length) {
-        usedAI = true;
-        const queryVector = embeddings[0];
-        const docVectors = embeddings.slice(1);
-        scored = docVectors.map((vector, idx) => ({ item: items[idx], score: cosineSimilarity(queryVector, vector) }));
+      const searchResults = await runAzureSearch(searchConfig, query, {
+        userId: principal.userId,
+        regionFilter,
+        caughtFilter,
+        shinyFilter,
+        topK
+      }, context);
+      if (searchResults && searchResults.length) {
+        usedAI = true; // using Azure AI Search service
+        results = searchResults.slice(0, topK);
       }
     } catch (err) {
-      context.log.warn('Embedding search failed, falling back to keyword search', err.message);
+      context.log.warn('Azure AI Search failed, falling back to keyword search', err.message);
     }
   }
 
-  if (!scored.length) {
-    scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
+  if (!results.length) {
+    const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
+    scored.sort((a, b) => b.score - a.score);
+    results = scored.slice(0, topK).map(entry => ({
+      pokemonId: entry.item.pokemonId,
+      name: entry.item.name,
+      sprite: entry.item.sprite,
+      spriteShiny: entry.item.spriteShiny,
+      types: entry.item.types,
+      region: entry.item.region,
+      caught: entry.item.caught,
+      shiny: entry.item.shiny,
+      notes: entry.item.notes,
+      screenshot: entry.item.screenshot,
+      similarity: Number(entry.score.toFixed(4))
+    }));
   }
-
-  scored.sort((a, b) => b.score - a.score);
-  const results = scored.slice(0, topK).map(entry => ({
-    pokemonId: entry.item.pokemonId,
-    name: entry.item.name,
-    sprite: entry.item.sprite,
-    spriteShiny: entry.item.spriteShiny,
-    types: entry.item.types,
-    region: entry.item.region,
-    caught: entry.item.caught,
-    shiny: entry.item.shiny,
-    notes: entry.item.notes,
-    screenshot: entry.item.screenshot,
-    similarity: Number(entry.score.toFixed(4))
-  }));
 
   context.res = {
     status: 200,

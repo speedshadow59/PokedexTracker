@@ -10,10 +10,9 @@
     "BLOB_STORAGE_CONTAINER_NAME": "pokemon-media",
     "EVENT_GRID_TOPIC_ENDPOINT": "https://your-topic.region.eventgrid.azure.net/api/events",
     "EVENT_GRID_TOPIC_KEY": "your-event-grid-key",
-    "AZURE_OPENAI_ENDPOINT": "https://your-openai-resource.openai.azure.com/",
-    "AZURE_OPENAI_KEY": "your-openai-key",
-    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT": "text-embedding-3-large",
-    "AZURE_OPENAI_API_VERSION": "2024-10-01-preview"
+    "AZURE_SEARCH_ENDPOINT": "https://your-search.search.windows.net",
+    "AZURE_SEARCH_KEY": "your-search-admin-key",
+    "AZURE_SEARCH_INDEX": "userdex"
   },
   "Host": {
     "CORS": "*"
