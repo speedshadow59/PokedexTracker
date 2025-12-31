@@ -7,6 +7,8 @@ let currentRegion = null;
 let currentPokemonList = [];
 let selectedPokemon = null;
 let currentUserPrincipal = null;
+let aiSearchEnabled = false;
+let currentSearchResults = null;
 
 function isAuthenticated() {
     return !!(currentUserPrincipal && currentUserPrincipal.userId);
@@ -205,6 +207,11 @@ function setupEventListeners() {
     if (searchInput) {
         searchInput.addEventListener('input', filterPokemonBySearch);
     }
+
+    const aiToggle = document.getElementById('aiSearchToggle');
+    if (aiToggle) {
+        aiToggle.addEventListener('click', toggleAISearch);
+    }
     
     // Back button
     document.getElementById('backBtn').addEventListener('click', () => {
@@ -217,6 +224,11 @@ function setupEventListeners() {
         document.querySelector('.region-selector').style.display = 'block';
         currentRegion = null;
         currentPokemonList = [];
+        currentSearchResults = null;
+        aiSearchEnabled = false;
+        const aiToggleBtn = document.getElementById('aiSearchToggle');
+        if (aiToggleBtn) aiToggleBtn.textContent = 'AI Search: Off';
+        updateAISearchStatus('Local filter');
         
         // Clear search
         const searchInput = document.getElementById('searchInput');
@@ -251,7 +263,15 @@ function setupEventListeners() {
 
 // Filter Pokemon by search
 function filterPokemonBySearch(e) {
-    const searchTerm = e.target.value.toLowerCase();
+    const rawSearch = e.target.value;
+
+    if (aiSearchEnabled) {
+        runAISearch(rawSearch);
+        return;
+    }
+
+    const searchTerm = rawSearch.toLowerCase();
+    currentSearchResults = null;
     const cards = document.querySelectorAll('.pokemon-card');
     let visibleCount = 0;
     
@@ -284,6 +304,105 @@ function filterPokemonBySearch(e) {
     }
 }
 
+function updateAISearchStatus(text) {
+    const statusEl = document.getElementById('aiSearchStatus');
+    if (statusEl && text) {
+        statusEl.textContent = text;
+    }
+}
+
+function toggleAISearch() {
+    aiSearchEnabled = !aiSearchEnabled;
+    const toggleBtn = document.getElementById('aiSearchToggle');
+    if (toggleBtn) {
+        toggleBtn.textContent = aiSearchEnabled ? 'AI Search: On' : 'AI Search: Off';
+    }
+    updateAISearchStatus(aiSearchEnabled ? 'AI search ready' : 'Local filter');
+
+    const searchInput = document.getElementById('searchInput');
+    if (!aiSearchEnabled) {
+        currentSearchResults = null;
+        if (searchInput && searchInput.value) {
+            filterPokemonBySearch({ target: searchInput });
+        } else {
+            renderPokemonGrid();
+            updateProgress();
+        }
+        return;
+    }
+
+    if (searchInput && searchInput.value.trim()) {
+        runAISearch(searchInput.value);
+    }
+}
+
+async function runAISearch(searchTerm) {
+    const query = (searchTerm || '').trim();
+
+    if (!query) {
+        currentSearchResults = null;
+        updateAISearchStatus('AI search idle');
+        renderPokemonGrid();
+        updateProgress();
+        return;
+    }
+
+    if (!isAuthenticated()) {
+        showToast('Sign in to use AI search.', 'warning');
+        updateAISearchStatus('Login required for AI search');
+        currentSearchResults = null;
+        renderPokemonGrid();
+        updateProgress();
+        return;
+    }
+
+    updateAISearchStatus('Searching...');
+
+    try {
+        const url = `${window.APP_CONFIG.API_BASE_URL}/search?q=${encodeURIComponent(query)}&topK=30`;
+        const response = await fetch(url, { method: 'GET', credentials: 'include' });
+
+        if (response.status === 401) {
+            showToast('Sign in to use AI search.', 'warning');
+            updateAISearchStatus('Login required for AI search');
+            currentSearchResults = null;
+            renderPokemonGrid();
+            updateProgress();
+            return;
+        }
+
+        const data = await response.json();
+        const results = Array.isArray(data.results) ? data.results : [];
+
+        currentSearchResults = results.map(r => ({
+            id: r.pokemonId,
+            name: r.name || `pokemon-${r.pokemonId}`,
+            sprite: r.sprite,
+            spriteShiny: r.spriteShiny || r.sprite,
+            types: Array.isArray(r.types) && r.types.length ? r.types : ['unknown'],
+            region: r.region || null,
+            caught: !!r.caught,
+            shiny: !!r.shiny,
+            notes: r.notes || ''
+        }));
+
+        renderPokemonGrid();
+        updateProgress(currentSearchResults);
+        updateAISearchStatus(data.usedAI ? 'AI search (embeddings)' : 'AI search (keywords)');
+
+        if (!currentSearchResults.length) {
+            showToast('No matching results. Try another query.', 'info');
+        }
+    } catch (err) {
+        console.error('AI search failed', err);
+        showToast('AI search unavailable. Using local filter instead.', 'warning');
+        currentSearchResults = null;
+        updateAISearchStatus('Local filter');
+        renderPokemonGrid();
+        updateProgress();
+    }
+}
+
 async function handleRegionClick(e) {
     const btn = e.target;
     const region = btn.dataset.region;
@@ -313,6 +432,7 @@ async function handleRegionClick(e) {
 async function fetchPokemonByRegion(offset, limit) {
     try {
         currentPokemonList = [];
+        currentSearchResults = null;
 
         const batchSize = 20;
         const spinnerTextEl = document.getElementById('loadingSpinner').querySelector('p');
@@ -550,10 +670,14 @@ function getPokemonTypes(id) {
 function renderPokemonGrid() {
     const grid = document.getElementById('pokemonGrid');
     const caughtData = getCaughtData();
-    
+
     grid.innerHTML = '';
-    
-    currentPokemonList.forEach(pokemon => {
+
+    const list = currentSearchResults && currentSearchResults.length > 0
+        ? currentSearchResults
+        : currentPokemonList;
+
+    list.forEach(pokemon => {
         const card = createPokemonCard(pokemon, caughtData[pokemon.id]);
         grid.appendChild(card);
     });
@@ -870,13 +994,14 @@ function applyModalAuthState() {
 }
 
 
-function updateProgress() {
+function updateProgress(listOverride) {
     const caughtData = getCaughtData();
-    const total = currentPokemonList.length;
-    const caught = currentPokemonList.filter(p => caughtData[p.id]).length;
-    
+    const list = listOverride || (currentSearchResults && currentSearchResults.length ? currentSearchResults : currentPokemonList);
+    const total = list.length;
+    const caught = list.filter(p => caughtData[p.id]).length;
+
     document.getElementById('progressCount').textContent = `${caught}/${total}`;
-    
+
     const percentage = total > 0 ? (caught / total) * 100 : 0;
     document.getElementById('progressFill').style.width = `${percentage}%`;
 }

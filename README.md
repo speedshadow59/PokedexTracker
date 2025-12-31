@@ -45,6 +45,7 @@ The deployment workflow is in `.github/workflows/azure-static-web-apps-jolly-san
    - Azure Static Web App
    - Cosmos DB account (with MongoDB API enabled)
    - Azure Blob Storage account
+   - Azure OpenAI resource (for embeddings powering AI search)
    - Event Grid Topic (optional, for event notifications)
 
 2. **Configure Azure Static Web App:**
@@ -54,6 +55,10 @@ The deployment workflow is in `.github/workflows/azure-static-web-apps-jolly-san
      - `COSMOS_DB_COLLECTION_NAME`
      - `BLOB_STORAGE_CONNECTION_STRING`
      - `BLOB_STORAGE_CONTAINER_NAME`
+   - `AZURE_OPENAI_ENDPOINT`
+   - `AZURE_OPENAI_KEY`
+   - `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` (e.g., `text-embedding-3-large`)
+   - `AZURE_OPENAI_API_VERSION` (default `2024-10-01-preview`)
      - `EVENT_GRID_TOPIC_ENDPOINT` (optional)
      - `EVENT_GRID_TOPIC_KEY` (optional)
 
@@ -132,6 +137,7 @@ See the [API Documentation](api/README.md) for detailed information about endpoi
 - Persistent storage with Cosmos DB
 - Media uploads to Azure Blob Storage
 - Event-driven architecture with Event Grid
+- AI-assisted search using Azure OpenAI embeddings
 
 ## API Endpoints
 
@@ -142,6 +148,7 @@ The backend provides the following REST API endpoints:
 - **PUT /api/userdex** - Toggle caught status for a Pokémon
 - **POST /api/comments** - Save a comment for a Pokémon entry
 - **POST /api/media** - Upload and store media files
+- **GET/POST /api/search** - AI-assisted search across caught Pokémon (embeddings + filters)
 
 For detailed API documentation, see [api/README.md](api/README.md).
 
@@ -160,3 +167,4 @@ For detailed API documentation, see [api/README.md](api/README.md).
 - Azure Blob Storage
 - Azure Event Grid
 - Azure Static Web Apps
+- Azure OpenAI (embeddings for AI search)
