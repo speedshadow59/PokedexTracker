@@ -4,7 +4,8 @@
   "description": "Azure Functions backend for Pokédex Tracker",
   "scripts": {
     "start": "func start",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "backfill:userdex:id": "node scripts/backfill-userdex-id.js"
   },
   "dependencies": {
     "@azure/storage-blob": "^12.17.0",

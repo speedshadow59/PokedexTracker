@@ -189,6 +189,60 @@ body {
     font-weight: 600;
 }
 
+.search-controls {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #f9fafb;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    background: #ffffff;
+}
+
+.pill-btn {
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    color: #1f2937;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.pill-btn:hover {
+    border-color: #667eea;
+    color: #4c51bf;
+    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.18);
+}
+
+.status-pill {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid #e5e7eb;
+}
+
 .back-btn {
     padding: 10px 20px;
     background: #6b7280;
