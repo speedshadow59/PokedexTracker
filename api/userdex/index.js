@@ -227,6 +227,7 @@ module.exports = async function (context, req) {
           { userId: userId, pokemonId: parseInt(pokemonId) },
           {
             $set: {
+              id: `${userId}-${parseInt(pokemonId)}`,
               caught: true,
               shiny: shiny || false,
               notes: notes || '',
@@ -241,6 +242,7 @@ module.exports = async function (context, req) {
       // Create new entry (mark as caught)
       if (caught !== false) {
         result = await collection.insertOne({
+          id: `${userId}-${parseInt(pokemonId)}`,
           userId: userId,
           pokemonId: parseInt(pokemonId),
           caught: true,
