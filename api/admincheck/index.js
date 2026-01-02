@@ -1,19 +1,8 @@
-const { getClientPrincipal } = require('../shared/utils');
-
-// Minimal handler to verify function is loaded and reachable. Once confirmed,
-// we can re-enable the Graph role lookup.
+// Minimal test version without dependencies to debug routing
 module.exports = async function (context, req) {
-  const principal = getClientPrincipal(req);
-  const summary = principal ? {
-    identityProvider: principal.identityProvider,
-    userId: principal.userId,
-    userDetails: principal.userDetails,
-    userRoles: principal.userRoles
-  } : null;
-
   context.res = {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ok: true, principal: summary })
+    body: JSON.stringify({ ok: true, message: 'admincheck loaded' })
   };
 };
