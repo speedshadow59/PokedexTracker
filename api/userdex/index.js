@@ -19,7 +19,99 @@ const { connectToDatabase, emitEvent, getClientPrincipal, getBlobServiceClient }
  *   "pokemonId": 25
  * }
  */
+
+const { v4: uuidv4 } = require('uuid');
+
 module.exports = async function (context, req) {
+  // Share endpoint: POST /api/userdex/share
+  if (req.method === 'POST' && req.url && req.url.endsWith('/share')) {
+    const principal = getClientPrincipal(req);
+    if (!principal || !principal.userId) {
+      context.res = {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Unauthorized' }
+      };
+      return;
+    }
+    const userId = principal.userId;
+    try {
+      const db = await connectToDatabase();
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      // Generate or reuse a shareId for this user
+      let shareId = uuidv4();
+      // Store shareId on all userdex entries for this user
+      await collection.updateMany(
+        { userId: userId },
+        { $set: { shareId } }
+      );
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: { shareId }
+      };
+    } catch (error) {
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Internal server error', message: error.message }
+      };
+    }
+    return;
+  }
+
+  // Shared view endpoint: GET /api/userdex/shared/:shareId
+  if (req.method === 'GET' && req.url && req.url.includes('/shared/')) {
+    // Extract shareId from URL
+    const parts = req.url.split('/shared/');
+    const shareId = parts[1] ? parts[1].split('?')[0] : null;
+    if (!shareId) {
+      context.res = {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Missing shareId' }
+      };
+      return;
+    }
+    try {
+      const db = await connectToDatabase();
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const items = await collection.find({ shareId }).toArray();
+      if (!items.length) {
+        context.res = {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+          body: { error: 'Not found' }
+        };
+        return;
+      }
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          shareId,
+          count: items.length,
+          pokemon: items.map(i => ({
+            pokemonId: i.pokemonId,
+            caught: i.caught,
+            shiny: i.shiny || false,
+            notes: i.notes || '',
+            screenshot: i.screenshot || null,
+            updatedAt: i.updatedAt || i.createdAt || null
+          }))
+        }
+      };
+    } catch (error) {
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Internal server error', message: error.message }
+      };
+    }
+    return;
+  }
+
+  // Default: require authentication for other endpoints
   const principal = getClientPrincipal(req);
   if (!principal || !principal.userId) {
     context.res = {
@@ -29,7 +121,6 @@ module.exports = async function (context, req) {
     };
     return;
   }
-
   const authenticatedUserId = principal.userId;
 
   if (req.method === 'GET') {

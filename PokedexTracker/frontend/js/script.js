@@ -1,3 +1,54 @@
+    // Share button
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', async () => {
+            if (!isAuthenticated()) {
+                showToast('Sign in to share your Pokédex.', 'warning');
+                return;
+            }
+            shareBtn.disabled = true;
+            shareBtn.textContent = 'Generating...';
+            try {
+                const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex/share`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const shareId = data.shareId;
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareId}`;
+                    document.getElementById('shareLinkInput').value = shareUrl;
+                    document.getElementById('shareModal').style.display = 'block';
+                } else {
+                    showToast('Failed to generate share link.', 'error');
+                }
+            } catch (err) {
+                showToast('Error generating share link.', 'error');
+            } finally {
+                shareBtn.disabled = false;
+                shareBtn.textContent = 'Share';
+            }
+        });
+    }
+
+    // Share modal close
+    const closeShareModal = document.getElementById('closeShareModal');
+    if (closeShareModal) {
+        closeShareModal.addEventListener('click', () => {
+            document.getElementById('shareModal').style.display = 'none';
+        });
+    }
+
+    // Copy share link
+    const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+    if (copyShareLinkBtn) {
+        copyShareLinkBtn.addEventListener('click', () => {
+            const input = document.getElementById('shareLinkInput');
+            input.select();
+            document.execCommand('copy');
+            showToast('Link copied to clipboard!', 'success');
+        });
+    }
 // Storage keys
 const STORAGE_KEY = 'pokedexTracker';
 const USER_ID_KEY = 'pokedexUserId';
@@ -87,14 +138,79 @@ document.addEventListener("DOMContentLoaded", () => {
 // Load region from URL if present
 function loadFromURL() {
     const urlParams = new URLSearchParams(window.location.search);
+    const shareId = urlParams.get('share');
+    if (shareId) {
+        // Shared Pokedex view
+        showSharedPokedex(shareId);
+        return;
+    }
     const region = urlParams.get('region');
-    
     if (region) {
         const regionBtn = document.querySelector(`[data-region="${region}"]`);
         if (regionBtn) {
             regionBtn.click();
         }
     }
+// Show shared Pokedex in read-only mode
+async function showSharedPokedex(shareId) {
+    document.querySelector('.region-selector').style.display = 'none';
+    document.getElementById('pokedexSection').style.display = 'block';
+    document.getElementById('loadingSpinner').style.display = 'block';
+    document.getElementById('pokemonGrid').innerHTML = '';
+    // Hide share button
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) shareBtn.style.display = 'none';
+    // Hide AI search (optional)
+    const aiToggle = document.getElementById('aiSearchToggle');
+    if (aiToggle) aiToggle.style.display = 'none';
+    // Hide save/uncatch in modal (handled in modal logic)
+
+    try {
+        const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex/shared/${shareId}`);
+        if (!res.ok) {
+            document.getElementById('regionTitle').textContent = 'Shared Pokédex Not Found';
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('pokemonGrid').innerHTML = '<div class="empty-state"><p>Shared Pokédex not found or has been removed.</p></div>';
+            return;
+        }
+        const data = await res.json();
+        // Set title
+        document.getElementById('regionTitle').textContent = 'Shared Pokédex';
+        // Render grid (read-only)
+        renderSharedPokemonGrid(data.pokemon || []);
+        document.getElementById('loadingSpinner').style.display = 'none';
+    } catch (err) {
+        document.getElementById('regionTitle').textContent = 'Error Loading Shared Pokédex';
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('pokemonGrid').innerHTML = '<div class="empty-state"><p>Error loading shared Pokédex.</p></div>';
+    }
+}
+
+// Render shared Pokedex grid (read-only)
+function renderSharedPokemonGrid(pokemonList) {
+    const grid = document.getElementById('pokemonGrid');
+    grid.innerHTML = '';
+    if (!pokemonList.length) {
+        grid.innerHTML = '<div class="empty-state"><p>No Pokémon found in this Pokédex.</p></div>';
+        return;
+    }
+    pokemonList.forEach(entry => {
+        const card = document.createElement('div');
+        card.className = 'pokemon-card';
+        card.innerHTML = `
+            <div class="pokemon-sprite"><img src="${entry.sprite || ''}" alt="Sprite" /></div>
+            <div class="pokemon-name">${getPokemonName(entry.pokemonId)}</div>
+            <div class="pokemon-number">#${entry.pokemonId}</div>
+            <div class="pokemon-meta">
+                ${entry.shiny ? '<span class="shiny-pill">Shiny</span>' : ''}
+                ${entry.caught ? '<span class="caught-pill">Caught</span>' : ''}
+            </div>
+            <div class="pokemon-notes">${entry.notes ? `<strong>Notes:</strong> ${entry.notes}` : ''}</div>
+            ${entry.screenshot ? `<div class="pokemon-screenshot"><img src="${entry.screenshot}" alt="Screenshot" /></div>` : ''}
+        `;
+        grid.appendChild(card);
+    });
+}
 }
 
 // Handle browser back/forward buttons
@@ -267,6 +383,11 @@ function filterPokemonBySearch(e) {
 
     if (aiSearchEnabled) {
         runAISearch(rawSearch);
+        // Hide empty state if input is cleared
+        if (!rawSearch.trim()) {
+            const emptyMsg = document.getElementById('searchEmpty');
+            if (emptyMsg) emptyMsg.style.display = 'none';
+        }
         return;
     }
 
