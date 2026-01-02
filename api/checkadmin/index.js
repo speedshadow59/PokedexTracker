@@ -28,7 +28,8 @@ module.exports = async function (context, req) {
       // If 404, look up by email
       if (err.message && err.message.includes('Resource') && principal.userDetails) {
         // Look up user by email
-        const graphToken = await require('../shared/utils').getGraphToken();
+        const { getGraphToken } = require('../shared/utils');
+        const graphToken = await getGraphToken();
         const email = principal.userDetails;
         const url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${email}'&$select=id`;
         const res = await fetch(url, {
