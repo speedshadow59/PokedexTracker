@@ -160,10 +160,14 @@ async function showSharedPokedex(shareId) {
     // Hide share button
     const shareBtn = document.getElementById('shareBtn');
     if (shareBtn) shareBtn.style.display = 'none';
-    // Hide AI search (optional)
+    // Hide AI search and search input
     const aiToggle = document.getElementById('aiSearchToggle');
     if (aiToggle) aiToggle.style.display = 'none';
-    // Hide save/uncatch in modal (handled in modal logic)
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.style.display = 'none';
+    // Hide back button
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) backBtn.style.display = 'none';
 
     try {
         const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex/shared/${shareId}`);
@@ -205,11 +209,30 @@ function renderSharedPokemonGrid(pokemonList) {
                 ${entry.shiny ? '<span class="shiny-pill">Shiny</span>' : ''}
                 ${entry.caught ? '<span class="caught-pill">Caught</span>' : ''}
             </div>
-            <div class="pokemon-notes">${entry.notes ? `<strong>Notes:</strong> ${entry.notes}` : ''}</div>
-            ${entry.screenshot ? `<div class="pokemon-screenshot"><img src="${entry.screenshot}" alt="Screenshot" /></div>` : ''}
         `;
+        card.addEventListener('click', () => openSharedPokemonModal(entry));
         grid.appendChild(card);
     });
+}
+
+// Show read-only modal for shared pokedex
+function openSharedPokemonModal(entry) {
+    const modal = document.getElementById('pokemonModal');
+    if (!modal) return;
+    document.getElementById('modalSprite').src = entry.sprite || '';
+    document.getElementById('modalName').textContent = getPokemonName(entry.pokemonId);
+    document.getElementById('modalNumber').textContent = `#${entry.pokemonId}`;
+    document.getElementById('modalTypes').innerHTML = '';
+    document.getElementById('shinyToggle').checked = !!entry.shiny;
+    document.getElementById('shinyToggle').disabled = true;
+    document.getElementById('catchNotes').value = entry.notes || '';
+    document.getElementById('catchNotes').disabled = true;
+    document.getElementById('screenshotPreview').innerHTML = entry.screenshot ? `<img src="${entry.screenshot}" alt="Screenshot" style="max-width:100%;border-radius:8px;" />` : '';
+    document.getElementById('screenshotUpload').style.display = 'none';
+    document.getElementById('saveBtn').style.display = 'none';
+    document.getElementById('uncatchBtn').style.display = 'none';
+    document.getElementById('modalAuthNotice').style.display = 'none';
+    modal.classList.add('show');
 }
 }
 
