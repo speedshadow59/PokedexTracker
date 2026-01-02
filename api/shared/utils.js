@@ -214,5 +214,6 @@ module.exports = {
   emitEvent,
   getClientPrincipal,
   generateBlobSasUrl,
-  getUserAppRoles
+  getUserAppRoles,
+  getGraphToken
 };
