@@ -413,31 +413,33 @@ body {
 
 /* Share Modal Specific Styles */
 .share-modal-content {
-    max-width: 600px !important;
+    max-width: none !important;
     width: auto !important;
-    min-width: 400px !important;
-    padding: 35px !important;
+    min-width: 500px !important;
+    padding: 40px 45px !important;
+    margin: 20px !important;
 }
 
 .share-modal-body {
     padding: 0 !important;
     gap: 0 !important;
-    min-width: 350px;
+    min-width: 450px;
 }
 
 .share-link-input {
     width: 100%;
-    padding: 14px;
-    font-size: 13px;
+    min-width: 450px;
+    padding: 16px 20px;
+    font-size: 14px;
     border: 2px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #f9fafb;
-    margin-bottom: 18px;
-    text-align: center;
+    margin-bottom: 20px;
+    text-align: left;
     font-family: 'Courier New', monospace;
     color: #374151;
     word-break: break-all;
-    line-height: 1.5;
+    line-height: 1.6;
 }
 
 .share-link-input:focus {

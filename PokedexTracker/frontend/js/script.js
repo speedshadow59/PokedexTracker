@@ -184,24 +184,12 @@ function openSharedPokemonModal(entry) {
     document.getElementById('catchNotes').value = entry.notes || '';
     document.getElementById('catchNotes').disabled = true;
     
-    // Handle screenshot display with proper error handling
+    // Hide screenshot section entirely for shared view (blob storage is private)
     const screenshotPreview = document.getElementById('screenshotPreview');
-    if (entry.screenshot) {
-        const img = document.createElement('img');
-        img.src = entry.screenshot;
-        img.alt = 'Screenshot';
-        img.style.maxWidth = '100%';
-        img.style.borderRadius = '8px';
-        img.onerror = function() {
-            screenshotPreview.innerHTML = '<p style="color: #6b7280; font-size: 13px; text-align: center; padding: 10px;">Screenshot not available</p>';
-        };
-        screenshotPreview.innerHTML = '';
-        screenshotPreview.appendChild(img);
-    } else {
-        screenshotPreview.innerHTML = '';
-    }
-    
+    screenshotPreview.style.display = 'none';
     document.getElementById('screenshotUpload').style.display = 'none';
+    const screenshotLabel = document.querySelector('label[for="screenshotUpload"]');
+    if (screenshotLabel) screenshotLabel.style.display = 'none';
     document.getElementById('saveBtn').style.display = 'none';
     document.getElementById('uncatchBtn').style.display = 'none';
     document.getElementById('modalAuthNotice').style.display = 'block';

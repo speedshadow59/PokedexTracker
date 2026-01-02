@@ -97,7 +97,6 @@ module.exports = async function (context, req) {
             caught: i.caught,
             shiny: i.shiny || false,
             notes: i.notes || '',
-            screenshot: i.screenshot || null,
             sprite: i.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i.pokemonId}.png`,
             spriteShiny: i.spriteShiny || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i.pokemonId}.png`,
             updatedAt: i.updatedAt || i.createdAt || null
