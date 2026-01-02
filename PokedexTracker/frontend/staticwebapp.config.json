@@ -9,6 +9,10 @@
       "allowedRoles": ["authenticated"]
     },
     {
+      "route": "/api/admincheck",
+      "allowedRoles": ["anonymous"]
+    },
+    {
       "route": "/api/pokedex/*",
       "allowedRoles": ["anonymous"]
     },
