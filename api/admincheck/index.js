@@ -11,7 +11,7 @@ module.exports = async function (context, req) {
     userRoles: principal.userRoles
   } : null;
 
-  return {
+  context.res = {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ok: true, principal: summary })
