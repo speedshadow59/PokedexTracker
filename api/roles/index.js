@@ -11,6 +11,7 @@ module.exports = async function (context, req) {
     const principal = getClientPrincipal(req);
 
     if (!principal) {
+      context.log('No principal found');
       context.res = {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -19,10 +20,15 @@ module.exports = async function (context, req) {
       return;
     }
 
+    context.log('Principal:', JSON.stringify(principal));
+    context.log('userRoles:', principal.userRoles);
+
     // Fall back to built-in authenticated if no app roles are assigned
     const roles = (principal.userRoles && principal.userRoles.length)
       ? principal.userRoles
       : ['authenticated'];
+    
+    context.log('Returning roles:', roles);
 
     context.res = {
       status: 200,
