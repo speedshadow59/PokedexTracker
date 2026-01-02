@@ -13,7 +13,10 @@ module.exports = async function (context, req) {
       };
     }
 
-    const roles = principal.userRoles || [];
+    // Fall back to built-in authenticated if no app roles are assigned
+    const roles = (principal.userRoles && principal.userRoles.length)
+      ? principal.userRoles
+      : ['authenticated'];
 
     return {
       status: 200,

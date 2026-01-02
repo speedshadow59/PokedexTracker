@@ -9,7 +9,7 @@ module.exports = async function (context, req) {
   try {
     context.log('roles function alive');
     const principal = getClientPrincipal(req);
-    
+
     if (!principal) {
       context.res = {
         status: 200,
@@ -19,8 +19,10 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Extract roles from userRoles array (Entra app roles)
-    const roles = principal.userRoles || [];
+    // Fall back to built-in authenticated if no app roles are assigned
+    const roles = (principal.userRoles && principal.userRoles.length)
+      ? principal.userRoles
+      : ['authenticated'];
 
     context.res = {
       status: 200,
