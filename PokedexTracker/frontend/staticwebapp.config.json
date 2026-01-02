@@ -9,7 +9,7 @@
       "allowedRoles": ["authenticated"]
     },
     {
-      "route": "/api/admincheck",
+      "route": "/api/testfunc",
       "allowedRoles": ["anonymous"]
     },
     {
