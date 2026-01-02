@@ -150,16 +150,16 @@ function renderSharedPokemonGrid(pokemonList) {
     pokemonList.forEach(entry => {
         const card = document.createElement('div');
         card.className = 'pokemon-card caught';
+        if (entry.shiny) card.classList.add('shiny');
         const spriteUrl = entry.shiny && entry.spriteShiny ? entry.spriteShiny : (entry.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${entry.pokemonId}.png`);
         const pokemonName = getPokemonName(entry.pokemonId) || `Pokemon #${entry.pokemonId}`;
+        const types = getPokemonTypes(entry.pokemonId);
+        const typeBadges = types.map(type => `<span class="pokemon-type type-${type.toLowerCase()}">${type}</span>`).join('');
         card.innerHTML = `
+            <div class="pokemon-number">#${entry.pokemonId}</div>
             <div class="pokemon-sprite"><img src="${spriteUrl}" alt="${pokemonName}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${entry.pokemonId}.png'" /></div>
             <div class="pokemon-name">${pokemonName}</div>
-            <div class="pokemon-number">#${entry.pokemonId}</div>
-            <div class="pokemon-meta">
-                ${entry.shiny ? '<span class="shiny-pill">✨ Shiny</span>' : ''}
-                ${entry.caught ? '<span class="caught-pill">✓ Caught</span>' : ''}
-            </div>
+            <div class="pokemon-types">${typeBadges}</div>
         `;
         card.addEventListener('click', () => openSharedPokemonModal(entry));
         grid.appendChild(card);

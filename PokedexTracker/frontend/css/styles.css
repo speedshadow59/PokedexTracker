@@ -411,6 +411,43 @@ body {
     display: flex !important;
 }
 
+/* Share Modal Specific Styles */
+.share-modal-content {
+    max-width: 500px !important;
+    width: 90% !important;
+    padding: 30px !important;
+}
+
+.share-modal-body {
+    padding: 0 !important;
+    gap: 0 !important;
+}
+
+.share-link-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    margin-bottom: 16px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    color: #374151;
+}
+
+.share-link-input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: white;
+}
+
+.copy-link-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
