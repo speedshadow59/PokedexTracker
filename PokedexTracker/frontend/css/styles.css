@@ -391,8 +391,9 @@ body {
 .type-fairy { background: #ee99ac; }
 
 /* Modal */
+
 .modal {
-    display: none;
+    display: none !important;
     position: fixed;
     z-index: 1000;
     left: 0;
@@ -402,10 +403,12 @@ body {
     overflow: auto;
     background-color: rgba(0, 0, 0, 0.6);
     animation: fadeIn 0.3s ease;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal.show {
-    display: block;
+    display: flex !important;
 }
 
 @keyframes fadeIn {
