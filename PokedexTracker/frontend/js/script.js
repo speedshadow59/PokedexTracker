@@ -189,10 +189,11 @@ function openSharedPokemonModal(entry) {
     const screenshotUrl = entry.shiny && entry.screenshotShiny ? entry.screenshotShiny : entry.screenshot;
     
     if (screenshotUrl) {
-        screenshotPreview.src = screenshotUrl;
+        screenshotPreview.innerHTML = `<img src="${screenshotUrl}" alt="Screenshot" style="max-width: 100%; border-radius: 6px; border: 1px solid #d1d5db;">`;
         screenshotPreview.style.display = 'block';
     } else {
         screenshotPreview.style.display = 'none';
+        screenshotPreview.innerHTML = '';
     }
     
     // Hide upload controls for shared view
