@@ -1,54 +1,3 @@
-    // Share button
-    const shareBtn = document.getElementById('shareBtn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', async () => {
-            if (!isAuthenticated()) {
-                showToast('Sign in to share your Pokédex.', 'warning');
-                return;
-            }
-            shareBtn.disabled = true;
-            shareBtn.textContent = 'Generating...';
-            try {
-                const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex/share`, {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    const shareId = data.shareId;
-                    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareId}`;
-                    document.getElementById('shareLinkInput').value = shareUrl;
-                    document.getElementById('shareModal').classList.add('show');
-                } else {
-                    showToast('Failed to generate share link.', 'error');
-                }
-            } catch (err) {
-                showToast('Error generating share link.', 'error');
-            } finally {
-                shareBtn.disabled = false;
-                shareBtn.textContent = 'Share';
-            }
-        });
-    }
-
-    // Share modal close
-    const closeShareModal = document.getElementById('closeShareModal');
-    if (closeShareModal) {
-        closeShareModal.addEventListener('click', () => {
-            document.getElementById('shareModal').classList.remove('show');
-        });
-    }
-
-    // Copy share link
-    const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
-    if (copyShareLinkBtn) {
-        copyShareLinkBtn.addEventListener('click', () => {
-            const input = document.getElementById('shareLinkInput');
-            input.select();
-            document.execCommand('copy');
-            showToast('Link copied to clipboard!', 'success');
-        });
-    }
 // Storage keys
 const STORAGE_KEY = 'pokedexTracker';
 const USER_ID_KEY = 'pokedexUserId';
@@ -200,14 +149,16 @@ function renderSharedPokemonGrid(pokemonList) {
     }
     pokemonList.forEach(entry => {
         const card = document.createElement('div');
-        card.className = 'pokemon-card';
+        card.className = 'pokemon-card caught';
+        const spriteUrl = entry.shiny && entry.spriteShiny ? entry.spriteShiny : (entry.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${entry.pokemonId}.png`);
+        const pokemonName = getPokemonName(entry.pokemonId) || `Pokemon #${entry.pokemonId}`;
         card.innerHTML = `
-            <div class="pokemon-sprite"><img src="${entry.sprite || ''}" alt="Sprite" /></div>
-            <div class="pokemon-name">${getPokemonName(entry.pokemonId)}</div>
+            <div class="pokemon-sprite"><img src="${spriteUrl}" alt="${pokemonName}" onerror="this.src='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${entry.pokemonId}.png'" /></div>
+            <div class="pokemon-name">${pokemonName}</div>
             <div class="pokemon-number">#${entry.pokemonId}</div>
             <div class="pokemon-meta">
-                ${entry.shiny ? '<span class="shiny-pill">Shiny</span>' : ''}
-                ${entry.caught ? '<span class="caught-pill">Caught</span>' : ''}
+                ${entry.shiny ? '<span class="shiny-pill">✨ Shiny</span>' : ''}
+                ${entry.caught ? '<span class="caught-pill">✓ Caught</span>' : ''}
             </div>
         `;
         card.addEventListener('click', () => openSharedPokemonModal(entry));
@@ -219,10 +170,15 @@ function renderSharedPokemonGrid(pokemonList) {
 function openSharedPokemonModal(entry) {
     const modal = document.getElementById('pokemonModal');
     if (!modal) return;
-    document.getElementById('modalSprite').src = entry.sprite || '';
-    document.getElementById('modalName').textContent = getPokemonName(entry.pokemonId);
+    const spriteUrl = entry.shiny && entry.spriteShiny ? entry.spriteShiny : (entry.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${entry.pokemonId}.png`);
+    const pokemonName = getPokemonName(entry.pokemonId) || `Pokemon #${entry.pokemonId}`;
+    document.getElementById('modalSprite').src = spriteUrl;
+    document.getElementById('modalSprite').onerror = function() {
+        this.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${entry.pokemonId}.png`;
+    };
+    document.getElementById('modalName').textContent = pokemonName;
     document.getElementById('modalNumber').textContent = `#${entry.pokemonId}`;
-    document.getElementById('modalTypes').innerHTML = '';
+    document.getElementById('modalTypes').innerHTML = getPokemonTypes(entry.pokemonId).map(type => `<span class="type-badge type-${type.toLowerCase()}">${type}</span>`).join('');
     document.getElementById('shinyToggle').checked = !!entry.shiny;
     document.getElementById('shinyToggle').disabled = true;
     document.getElementById('catchNotes').value = entry.notes || '';
@@ -231,7 +187,8 @@ function openSharedPokemonModal(entry) {
     document.getElementById('screenshotUpload').style.display = 'none';
     document.getElementById('saveBtn').style.display = 'none';
     document.getElementById('uncatchBtn').style.display = 'none';
-    document.getElementById('modalAuthNotice').style.display = 'none';
+    document.getElementById('modalAuthNotice').style.display = 'block';
+    document.getElementById('modalAuthNotice').textContent = 'This is a shared Pokédex (read-only)';
     modal.classList.add('show');
 }
 }
@@ -397,6 +354,73 @@ function setupEventListeners() {
     }
     if (importFile) {
         importFile.addEventListener('change', importLocalDataFromFile);
+    }
+
+    // Share button
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', async () => {
+            if (!isAuthenticated()) {
+                showToast('Sign in to share your Pokédex.', 'warning');
+                return;
+            }
+            shareBtn.disabled = true;
+            shareBtn.textContent = 'Generating...';
+            try {
+                const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex/share`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    const shareId = data.shareId;
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareId}`;
+                    document.getElementById('shareLinkInput').value = shareUrl;
+                    document.getElementById('shareModal').classList.add('show');
+                } else {
+                    showToast('Failed to generate share link.', 'error');
+                }
+            } catch (err) {
+                showToast('Error generating share link.', 'error');
+            } finally {
+                shareBtn.disabled = false;
+                shareBtn.textContent = 'Share Pokédex';
+            }
+        });
+    }
+
+    // Share modal close
+    const shareModal = document.getElementById('shareModal');
+    const closeShareModal = document.getElementById('closeShareModal');
+    if (closeShareModal) {
+        closeShareModal.addEventListener('click', () => {
+            shareModal.classList.remove('show');
+        });
+    }
+    // Close modal when clicking outside
+    if (shareModal) {
+        shareModal.addEventListener('click', (e) => {
+            if (e.target === shareModal) {
+                shareModal.classList.remove('show');
+            }
+        });
+    }
+
+    // Copy share link with modern clipboard API
+    const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+    if (copyShareLinkBtn) {
+        copyShareLinkBtn.addEventListener('click', async () => {
+            const input = document.getElementById('shareLinkInput');
+            try {
+                await navigator.clipboard.writeText(input.value);
+                showToast('Link copied to clipboard!', 'success');
+            } catch (err) {
+                // Fallback for older browsers
+                input.select();
+                document.execCommand('copy');
+                showToast('Link copied!', 'success');
+            }
+        });
     }
 }
 

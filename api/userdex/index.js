@@ -38,8 +38,9 @@ module.exports = async function (context, req) {
     try {
       const db = await connectToDatabase();
       const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-      // Generate or reuse a shareId for this user
-      let shareId = uuidv4();
+      // Check if user already has a shareId
+      const existingEntry = await collection.findOne({ userId: userId, shareId: { $exists: true, $ne: null } });
+      let shareId = existingEntry && existingEntry.shareId ? existingEntry.shareId : uuidv4();
       // Store shareId on all userdex entries for this user
       await collection.updateMany(
         { userId: userId },
@@ -97,6 +98,8 @@ module.exports = async function (context, req) {
             shiny: i.shiny || false,
             notes: i.notes || '',
             screenshot: i.screenshot || null,
+            sprite: i.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i.pokemonId}.png`,
+            spriteShiny: i.spriteShiny || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i.pokemonId}.png`,
             updatedAt: i.updatedAt || i.createdAt || null
           }))
         }
