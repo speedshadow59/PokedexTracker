@@ -21,6 +21,8 @@ module.exports = async function (context, req) {
     let roles = [];
     let lookedUp = false;
     let email = principal.userDetails;
+    let usersDebug = null;
+    let appRoleAssignmentsDebug = null;
     if (email) {
       // Always look up Entra objectId by email, then fallback to external UPN
       const { getGraphToken } = require('../shared/utils');
@@ -30,9 +32,14 @@ module.exports = async function (context, req) {
         headers: { Authorization: `Bearer ${graphToken}` }
       });
       let data = res.ok ? await res.json() : null;
+      usersDebug = data;
       if (data && Array.isArray(data.value) && data.value.length) {
         userId = data.value[0].id;
         lookedUp = true;
+        // Get appRoleAssignments debug
+        let appRoleUrl = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`;
+        let appRoleRes = await fetch(appRoleUrl, { headers: { Authorization: `Bearer ${graphToken}` } });
+        appRoleAssignmentsDebug = appRoleRes.ok ? await appRoleRes.json() : null;
         roles = await getUserAppRoles(userId);
       } else {
         // Try exact external UPN fallback for this tenant
@@ -42,9 +49,14 @@ module.exports = async function (context, req) {
           headers: { Authorization: `Bearer ${graphToken}` }
         });
         data = res.ok ? await res.json() : null;
+        usersDebug = data;
         if (data && Array.isArray(data.value) && data.value.length) {
           userId = data.value[0].id;
           lookedUp = true;
+          // Get appRoleAssignments debug
+          let appRoleUrl = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`;
+          let appRoleRes = await fetch(appRoleUrl, { headers: { Authorization: `Bearer ${graphToken}` } });
+          appRoleAssignmentsDebug = appRoleRes.ok ? await appRoleRes.json() : null;
           roles = await getUserAppRoles(userId);
         }
       }
@@ -58,8 +70,10 @@ module.exports = async function (context, req) {
         roles,
         userId,
         lookedUpByEmail: lookedUp,
-        userDetails: email || null
-      })
+        userDetails: email || null,
+        usersDebug,
+        appRoleAssignmentsDebug
+      }, null, 2)
     };
   } catch (error) {
     context.log.error('Error checking admin role:', error);
