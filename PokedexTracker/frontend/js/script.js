@@ -178,12 +178,29 @@ function openSharedPokemonModal(entry) {
     };
     document.getElementById('modalName').textContent = pokemonName;
     document.getElementById('modalNumber').textContent = `#${entry.pokemonId}`;
-    document.getElementById('modalTypes').innerHTML = getPokemonTypes(entry.pokemonId).map(type => `<span class="type-badge type-${type.toLowerCase()}">${type}</span>`).join('');
+    document.getElementById('modalTypes').innerHTML = getPokemonTypes(entry.pokemonId).map(type => `<span class="pokemon-type type-${type.toLowerCase()}">${type}</span>`).join('');
     document.getElementById('shinyToggle').checked = !!entry.shiny;
     document.getElementById('shinyToggle').disabled = true;
     document.getElementById('catchNotes').value = entry.notes || '';
     document.getElementById('catchNotes').disabled = true;
-    document.getElementById('screenshotPreview').innerHTML = entry.screenshot ? `<img src="${entry.screenshot}" alt="Screenshot" style="max-width:100%;border-radius:8px;" />` : '';
+    
+    // Handle screenshot display with proper error handling
+    const screenshotPreview = document.getElementById('screenshotPreview');
+    if (entry.screenshot) {
+        const img = document.createElement('img');
+        img.src = entry.screenshot;
+        img.alt = 'Screenshot';
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '8px';
+        img.onerror = function() {
+            screenshotPreview.innerHTML = '<p style="color: #6b7280; font-size: 13px; text-align: center; padding: 10px;">Screenshot not available</p>';
+        };
+        screenshotPreview.innerHTML = '';
+        screenshotPreview.appendChild(img);
+    } else {
+        screenshotPreview.innerHTML = '';
+    }
+    
     document.getElementById('screenshotUpload').style.display = 'none';
     document.getElementById('saveBtn').style.display = 'none';
     document.getElementById('uncatchBtn').style.display = 'none';

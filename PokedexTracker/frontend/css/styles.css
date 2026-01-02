@@ -413,27 +413,31 @@ body {
 
 /* Share Modal Specific Styles */
 .share-modal-content {
-    max-width: 500px !important;
-    width: 90% !important;
-    padding: 30px !important;
+    max-width: 600px !important;
+    width: auto !important;
+    min-width: 400px !important;
+    padding: 35px !important;
 }
 
 .share-modal-body {
     padding: 0 !important;
     gap: 0 !important;
+    min-width: 350px;
 }
 
 .share-link-input {
     width: 100%;
-    padding: 12px;
-    font-size: 14px;
+    padding: 14px;
+    font-size: 13px;
     border: 2px solid #e5e7eb;
     border-radius: 8px;
     background: #f9fafb;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
     text-align: center;
     font-family: 'Courier New', monospace;
     color: #374151;
+    word-break: break-all;
+    line-height: 1.5;
 }
 
 .share-link-input:focus {
@@ -444,8 +448,9 @@ body {
 
 .copy-link-btn {
     width: 100%;
-    padding: 12px;
+    padding: 14px;
     font-size: 15px;
+    font-weight: 600;
 }
 
 @keyframes fadeIn {
