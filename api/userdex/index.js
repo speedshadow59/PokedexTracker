@@ -218,6 +218,25 @@ module.exports = async function (context, req) {
         }
       }
 
+      // Delete the shiny screenshot blob if it exists
+      if (existingDoc && existingDoc.screenshotShiny) {
+        try {
+          const blobServiceClient = getBlobServiceClient();
+          const containerName = process.env.BLOB_CONTAINER_NAME || 'pokemon-media';
+          const containerClient = blobServiceClient.getContainerClient(containerName);
+          
+          const blobUrl = existingDoc.screenshotShiny;
+          const urlParts = blobUrl.split(`/${containerName}/`);
+          const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+          
+          const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+          await blockBlobClient.deleteIfExists();
+          context.log(`Deleted shiny blob: ${blobName}`);
+        } catch (blobError) {
+          context.log.warn('Error deleting shiny blob (continuing with document delete):', blobError.message);
+        }
+      }
+
       // Delete entry
       const result = await collection.deleteOne({
         userId: userId,
