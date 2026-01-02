@@ -17,31 +17,24 @@ module.exports = async function (context, req) {
       return;
     }
 
-    let userId = principal.userId;
+    let userId = null;
     let roles = [];
     let lookedUp = false;
-
-    // Try to get roles with userId
-    try {
-      roles = await getUserAppRoles(userId);
-    } catch (err) {
-      // If 404, look up by email
-      if (err.message && err.message.includes('Resource') && principal.userDetails) {
-        // Look up user by email
-        const { getGraphToken } = require('../shared/utils');
-        const graphToken = await getGraphToken();
-        const email = principal.userDetails;
-        const url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${email}'&$select=id`;
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${graphToken}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.value) && data.value.length) {
-            userId = data.value[0].id;
-            lookedUp = true;
-            roles = await getUserAppRoles(userId);
-          }
+    let email = principal.userDetails;
+    if (email) {
+      // Always look up Entra objectId by email
+      const { getGraphToken } = require('../shared/utils');
+      const graphToken = await getGraphToken();
+      const url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${email}'&$select=id`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${graphToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.value) && data.value.length) {
+          userId = data.value[0].id;
+          lookedUp = true;
+          roles = await getUserAppRoles(userId);
         }
       }
     }
@@ -54,7 +47,7 @@ module.exports = async function (context, req) {
         roles,
         userId,
         lookedUpByEmail: lookedUp,
-        userDetails: principal.userDetails || null
+        userDetails: email || null
       })
     };
   } catch (error) {
