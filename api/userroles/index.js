@@ -2,21 +2,14 @@ const { getClientPrincipal } = require('../shared/utils');
 
 module.exports = async function (context, req) {
   try {
-    context.log('GET /api/userroles invoked', {method: req.method});
     const principal = getClientPrincipal(req);
+    let roles = [];
 
-    if (!principal) {
-      return {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: []
-      };
+    if (principal && principal.userRoles && principal.userRoles.length > 0) {
+      roles = principal.userRoles;
+    } else if (principal) {
+      roles = ['authenticated'];
     }
-
-    // Fall back to built-in authenticated if no app roles are assigned
-    const roles = (principal.userRoles && principal.userRoles.length)
-      ? principal.userRoles
-      : ['authenticated'];
 
     return {
       status: 200,
@@ -24,11 +17,11 @@ module.exports = async function (context, req) {
       body: roles
     };
   } catch (error) {
-    context.log.error('Error fetching user roles:', error);
+    context.log.error('Error in userroles:', error.message);
     return {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: []
+      body: ['authenticated']
     };
   }
 };

@@ -7,28 +7,14 @@ const { getClientPrincipal } = require('../shared/utils');
  */
 module.exports = async function (context, req) {
   try {
-    context.log('GET /api/roles invoked', {method: req.method});
     const principal = getClientPrincipal(req);
+    let roles = [];
 
-    if (!principal) {
-      context.log('No principal found');
-      context.res = {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: []
-      };
-      return;
+    if (principal && principal.userRoles && principal.userRoles.length > 0) {
+      roles = principal.userRoles;
+    } else if (principal) {
+      roles = ['authenticated'];
     }
-
-    context.log('Principal:', JSON.stringify(principal));
-    context.log('userRoles:', principal.userRoles);
-
-    // Fall back to built-in authenticated if no app roles are assigned
-    const roles = (principal.userRoles && principal.userRoles.length)
-      ? principal.userRoles
-      : ['authenticated'];
-    
-    context.log('Returning roles:', roles);
 
     context.res = {
       status: 200,
@@ -37,11 +23,11 @@ module.exports = async function (context, req) {
     };
 
   } catch (error) {
-    context.log.error('Error fetching user roles:', error);
+    context.log.error('Error in roles:', error.message);
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: []
+      body: ['authenticated']
     };
   }
 };
