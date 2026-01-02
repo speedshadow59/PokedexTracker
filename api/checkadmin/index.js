@@ -79,10 +79,8 @@ module.exports = async function (context, req) {
         roles,
         userId,
         lookedUpByEmail: lookedUp,
-        userDetails: email || null,
-        usersDebug,
-        appRoleAssignmentsDebug
-      }, null, 2)
+        userDetails: email || null
+      })
     };
   } catch (error) {
     context.log.error('Error checking admin role:', error);
