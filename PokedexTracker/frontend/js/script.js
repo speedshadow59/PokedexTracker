@@ -288,16 +288,19 @@ async function fetchAndApplyCurrentUser() {
             const principal = data && data.clientPrincipal ? data.clientPrincipal : null;
             currentUserPrincipal = principal;
             const userInfoEl = document.getElementById('userInfo');
+            const userNameLabel = document.getElementById('userNameLabel');
             const loginLink = document.getElementById('loginLink');
             const logoutLink = document.getElementById('logoutLink');
             const authPanel = document.getElementById('authPanel');
             if (principal) {
-                userInfoEl.textContent = `Signed in as ${principal.userDetails || principal.userId} (${principal.identityProvider})`;
+                if (userInfoEl) userInfoEl.style.display = 'inline-flex';
+                if (userNameLabel) userNameLabel.textContent = principal.userDetails || principal.userId;
                 if (loginLink) loginLink.style.display = 'none';
                 if (logoutLink) logoutLink.style.display = 'inline-block';
                 if (authPanel) authPanel.style.display = 'none';
             } else {
-                userInfoEl.textContent = 'Not signed in';
+                if (userInfoEl) userInfoEl.style.display = 'none';
+                if (userNameLabel) userNameLabel.textContent = '';
                 if (loginLink) loginLink.style.display = 'inline-block';
                 if (logoutLink) logoutLink.style.display = 'none';
                 if (authPanel) authPanel.style.display = 'flex';

@@ -25,9 +25,9 @@
             </label>
             <button id="shareBtn" class="save-btn" style="padding: 6px 12px;">Share Pokédex</button>
             <span id="backendStatus" style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #eee; color: #333;">Cloud Sync: Checking…</span>
-            <span id="userInfo" style="font-size: 12px; color: #555;">Not signed in</span>
-            <a href="/.auth/login/aad" id="loginLink" class="back-btn" style="padding: 6px 12px;">Login</a>
-            <a href="/.auth/logout" id="logoutLink" class="uncatch-btn" style="padding: 6px 12px; display: none;">Logout</a>
+            <span id="userInfo" class="user-badge" style="display:none;"><span class="status-dot"></span><span id="userNameLabel">Signed in</span></span>
+            <a href="/.auth/login/aad" id="loginLink" class="auth-link login">Sign in</a>
+            <a href="/.auth/logout" id="logoutLink" class="auth-link logout" style="display:none;">Sign out</a>
         </div>
     </div>
 </header>
