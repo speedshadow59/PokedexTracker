@@ -74,7 +74,7 @@ module.exports = async function (context, req) {
         roles,
         userId,
         lookedUpByEmail: lookedUp,
-        userDetails: email || null,
+        userDetails: principal.userDetails || null,
         debug: {
           principal,
           usersDebug,
