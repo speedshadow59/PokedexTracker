@@ -74,6 +74,7 @@ async function loadUserCaughtData() {
 
 
 // Initialize the app
+
 document.addEventListener("DOMContentLoaded", () => {
     setupEventListeners();
     updateProgress();
@@ -82,7 +83,76 @@ document.addEventListener("DOMContentLoaded", () => {
     // Refresh status periodically
     setInterval(checkBackendStatus, 60000);
     fetchAndApplyCurrentUser();
+    checkAdminAndShowDashboard();
+    // Admin Dashboard button click handler
+    const adminBtn = document.getElementById('adminDashboardBtn');
+    if (adminBtn) {
+        adminBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const adminSection = document.getElementById('adminDashboard');
+            if (adminSection) {
+                adminSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    }
 });
+
+async function checkAdminAndShowDashboard() {
+    try {
+        const res = await fetch('/api/checkadmin', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const adminDashboard = document.getElementById('adminDashboard');
+        const adminBtn = document.getElementById('adminDashboardBtn');
+        if (data.isAdmin) {
+            if (adminDashboard) adminDashboard.style.display = '';
+            if (adminBtn) adminBtn.style.display = '';
+            setupAdminDashboardTabs();
+        } else {
+            if (adminDashboard) adminDashboard.style.display = 'none';
+            if (adminBtn) adminBtn.style.display = 'none';
+        }
+    } catch (e) {
+        const adminDashboard = document.getElementById('adminDashboard');
+        const adminBtn = document.getElementById('adminDashboardBtn');
+        if (adminDashboard) adminDashboard.style.display = 'none';
+        if (adminBtn) adminBtn.style.display = 'none';
+    }
+}
+
+function setupAdminDashboardTabs() {
+    const tabUsers = document.getElementById('adminTabUsers');
+    const tabMedia = document.getElementById('adminTabMedia');
+    const tabAudit = document.getElementById('adminTabAudit');
+    const panelUsers = document.getElementById('adminPanelUsers');
+    const panelMedia = document.getElementById('adminPanelMedia');
+    const panelAudit = document.getElementById('adminPanelAudit');
+    if (!tabUsers || !tabMedia || !tabAudit) return;
+    tabUsers.onclick = () => {
+        tabUsers.classList.add('active');
+        tabMedia.classList.remove('active');
+        tabAudit.classList.remove('active');
+        panelUsers.style.display = '';
+        panelMedia.style.display = 'none';
+        panelAudit.style.display = 'none';
+    };
+    tabMedia.onclick = () => {
+        tabUsers.classList.remove('active');
+        tabMedia.classList.add('active');
+        tabAudit.classList.remove('active');
+        panelUsers.style.display = 'none';
+        panelMedia.style.display = '';
+        panelAudit.style.display = 'none';
+    };
+    tabAudit.onclick = () => {
+        tabUsers.classList.remove('active');
+        tabMedia.classList.remove('active');
+        tabAudit.classList.add('active');
+        panelUsers.style.display = 'none';
+        panelMedia.style.display = 'none';
+        panelAudit.style.display = '';
+    };
+}
 
 // Load region from URL if present
 function loadFromURL() {

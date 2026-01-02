@@ -24,6 +24,7 @@
                 <input type="file" id="importFile" accept="application/json" style="display:none;" />
             </label>
             <button id="shareBtn" class="save-btn" style="padding: 6px 12px;">Share Pokédex</button>
+            <button id="adminDashboardBtn" class="save-btn" style="padding: 6px 12px; display:none;">Admin Dashboard</button>
             <span id="backendStatus" style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #eee; color: #333;">Cloud Sync: Checking…</span>
             <span id="userInfo" class="user-badge" style="display:none;"><span class="status-dot"></span><span id="userNameLabel">Signed in</span></span>
             <a href="/.auth/login/aad" id="loginLink" class="auth-link login">Sign in</a>
@@ -32,7 +33,21 @@
     </div>
 </header>
 
+
 <main class="container">
+
+    <!-- Admin Dashboard (hidden by default, shown for admins) -->
+    <section id="adminDashboard" class="admin-dashboard" style="display:none; margin-bottom: 32px;">
+        <h2>Admin Dashboard</h2>
+        <div id="adminTabs" style="margin-bottom: 16px;">
+            <button id="adminTabUsers" class="admin-tab-btn active">User Management</button>
+            <button id="adminTabMedia" class="admin-tab-btn">Content Moderation</button>
+            <button id="adminTabAudit" class="admin-tab-btn">Audit Log</button>
+        </div>
+        <div id="adminPanelUsers" class="admin-panel-section"></div>
+        <div id="adminPanelMedia" class="admin-panel-section" style="display:none;"></div>
+        <div id="adminPanelAudit" class="admin-panel-section" style="display:none;"></div>
+    </section>
 
     <section id="authPanel" class="auth-panel">
         <div>
