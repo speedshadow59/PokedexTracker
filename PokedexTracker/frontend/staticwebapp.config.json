@@ -1,1 +1,58 @@
-{"routes":[{"route":"/api/roles","allowedRoles":["authenticated"]},{"route":"/api/userroles","allowedRoles":["authenticated"]},{"route":"/api/admincheck","allowedRoles":["anonymous"]},{"route":"/api/pokedex/*","allowedRoles":["anonymous"]},{"route":"/api/health","allowedRoles":["anonymous"]},{"route":"/api/userdex","allowedRoles":["authenticated"]},{"route":"/api/userdex/*","allowedRoles":["authenticated"]},{"route":"/api/media","allowedRoles":["authenticated"]},{"route":"/api/media/*","allowedRoles":["authenticated"]}],"responseOverrides":{"401":{"statusCode":302,"redirect":"/.auth/login/aad"}},"auth":{"rolesSource":"/api/userroles","identityProviders":{"azureActiveDirectory":{"registration":{"openIdIssuer":"https://login.microsoftonline.com/1bfe0e18-ac54-472d-bb79-ddfe65f19942","clientIdSettingName":"AZURE_CLIENT_ID","clientSecretSettingName":"AZURE_CLIENT_SECRET"}}}}}
+{
+  "routes": [
+    {
+      "route": "/api/roles",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/userroles",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/admincheck",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/pokedex/*",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/health",
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/userdex",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/userdex/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/media",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/media/*",
+      "allowedRoles": ["authenticated"]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "statusCode": 302,
+      "redirect": "/.auth/login/aad"
+    }
+  },
+  "auth": {
+    "rolesSource": "/api/userroles",
+    "identityProviders": {
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://login.microsoftonline.com/1bfe0e18-ac54-472d-bb79-ddfe65f19942",
+          "clientIdSettingName": "AZURE_CLIENT_ID",
+          "clientSecretSettingName": "AZURE_CLIENT_SECRET"
+        }
+      }
+    }
+  }
+}
