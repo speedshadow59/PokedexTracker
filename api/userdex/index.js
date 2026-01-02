@@ -61,6 +61,40 @@ module.exports = async function (context, req) {
     return;
   }
 
+  // Unshare endpoint: POST /api/userdex/unshare
+  if (req.method === 'POST' && req.url && req.url.endsWith('/unshare')) {
+    const principal = getClientPrincipal(req);
+    if (!principal || !principal.userId) {
+      context.res = {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Unauthorized' }
+      };
+      return;
+    }
+    const userId = principal.userId;
+    try {
+      const db = await connectToDatabase();
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const result = await collection.updateMany(
+        { userId: userId },
+        { $unset: { shareId: "" } }
+      );
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: { success: true, cleared: result.modifiedCount }
+      };
+    } catch (error) {
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Internal server error', message: error.message }
+      };
+    }
+    return;
+  }
+
   // Shared view endpoint: GET /api/userdex/shared/:shareId
   if (req.method === 'GET' && req.url && req.url.includes('/shared/')) {
     // Extract shareId from URL

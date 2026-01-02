@@ -438,6 +438,40 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Unshare / make private
+    const unshareBtn = document.getElementById('unshareBtn');
+    if (unshareBtn) {
+        unshareBtn.addEventListener('click', async () => {
+            if (!isAuthenticated()) {
+                showToast('Sign in to manage sharing.', 'warning');
+                return;
+            }
+            unshareBtn.disabled = true;
+            const originalText = unshareBtn.textContent;
+            unshareBtn.textContent = 'Making private...';
+            try {
+                const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex/unshare`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (res.ok) {
+                    const shareInput = document.getElementById('shareLinkInput');
+                    if (shareInput) shareInput.value = '';
+                    const shareModal = document.getElementById('shareModal');
+                    if (shareModal) shareModal.classList.remove('show');
+                    showToast('Sharing disabled. Link revoked.', 'success');
+                } else {
+                    showToast('Failed to disable sharing.', 'error');
+                }
+            } catch (err) {
+                showToast('Error disabling sharing.', 'error');
+            } finally {
+                unshareBtn.disabled = false;
+                unshareBtn.textContent = originalText;
+            }
+        });
+    }
 }
 
 // Filter Pokemon by search
