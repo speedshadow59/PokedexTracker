@@ -18,7 +18,7 @@
                     const shareId = data.shareId;
                     const shareUrl = `${window.location.origin}${window.location.pathname}?share=${shareId}`;
                     document.getElementById('shareLinkInput').value = shareUrl;
-                    document.getElementById('shareModal').style.display = 'block';
+                    document.getElementById('shareModal').classList.add('show');
                 } else {
                     showToast('Failed to generate share link.', 'error');
                 }
@@ -35,7 +35,7 @@
     const closeShareModal = document.getElementById('closeShareModal');
     if (closeShareModal) {
         closeShareModal.addEventListener('click', () => {
-            document.getElementById('shareModal').style.display = 'none';
+            document.getElementById('shareModal').classList.remove('show');
         });
     }
 
