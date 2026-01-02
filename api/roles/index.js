@@ -6,28 +6,16 @@ const { getClientPrincipal } = require('../shared/utils');
  * Called by SWA to populate user roles for route enforcement
  */
 module.exports = async function (context, req) {
-  try {
-    const principal = getClientPrincipal(req);
-    let roles = [];
+  const principal = getClientPrincipal(req);
+  let roles = ['authenticated'];
 
-    if (principal && principal.userRoles && principal.userRoles.length > 0) {
-      roles = principal.userRoles;
-    } else if (principal) {
-      roles = ['authenticated'];
-    }
-
-    context.res = {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: roles
-    };
-
-  } catch (error) {
-    context.log.error('Error in roles:', error.message);
-    context.res = {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: ['authenticated']
-    };
+  if (principal && principal.userRoles && Array.isArray(principal.userRoles) && principal.userRoles.length > 0) {
+    roles = principal.userRoles;
   }
+
+  return {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(roles)
+  };
 };
