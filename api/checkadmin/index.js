@@ -53,7 +53,8 @@ module.exports = async function (context, req) {
         isAdmin, 
         roles,
         userId,
-        lookedUpByEmail: lookedUp
+        lookedUpByEmail: lookedUp,
+        userDetails: principal.userDetails || null
       })
     };
   } catch (error) {
