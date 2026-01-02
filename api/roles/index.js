@@ -2,7 +2,7 @@ const { getClientPrincipal } = require('../shared/utils');
 
 /**
  * GET /api/roles
- * Returns the authenticated user's Entra app roles
+ * Returns the authenticated user's Entra app roles (or built-ins when using Simple auth)
  * Called by SWA to populate user roles for route enforcement
  */
 module.exports = async function (context, req) {
