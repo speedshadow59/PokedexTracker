@@ -5,7 +5,7 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  app_location: 'PokedexTracker/frontend'
+  app_location: 'PokedexTracker'
 
 steps:
 # Step 1: Copy frontend files to staging directory
