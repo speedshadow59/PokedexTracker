@@ -2,6 +2,7 @@ const { MongoClient } = require('mongodb');
 const { BlobServiceClient, BlobSASPermissions, generateBlobSASQueryParameters, StorageSharedKeyCredential } = require('@azure/storage-blob');
 const { EventGridPublisherClient, AzureKeyCredential } = require('@azure/eventgrid');
 const { Buffer } = require('buffer');
+const { URLSearchParams } = require('url');
 
 // Cosmos DB (MongoDB API) Connection
 let cachedDb = null;
@@ -128,11 +129,90 @@ function getClientPrincipal(req) {
   }
 }
 
+// Graph helpers for app role checks
+async function getGraphToken() {
+  const tenantId = process.env.AZURE_TENANT_ID || process.env.TENANT_ID;
+  const clientId = process.env.AZURE_CLIENT_ID || process.env.CLIENT_ID;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET || process.env.CLIENT_SECRET;
+
+  if (!tenantId || !clientId || !clientSecret) {
+    throw new Error('Graph credentials missing (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET)');
+  }
+
+  const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    scope: 'https://graph.microsoft.com/.default',
+    grant_type: 'client_credentials'
+  });
+
+  const res = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Graph token request failed: ${res.status} ${res.statusText} - ${text}`);
+  }
+
+  const json = await res.json();
+  if (!json.access_token) throw new Error('No access_token in Graph token response');
+  return json.access_token;
+}
+
+async function getServicePrincipalRoleMap(graphToken) {
+  const clientId = process.env.AZURE_CLIENT_ID || process.env.CLIENT_ID;
+  const url = `https://graph.microsoft.com/v1.0/servicePrincipals?$filter=appId eq '${clientId}'&$select=id,appRoles`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${graphToken}` }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to fetch service principal: ${res.status} ${res.statusText} - ${text}`);
+  }
+  const data = await res.json();
+  const sp = Array.isArray(data.value) && data.value.length ? data.value[0] : null;
+  if (!sp) throw new Error('Service principal not found for clientId');
+
+  const map = new Map();
+  (sp.appRoles || []).forEach(r => {
+    if (r && r.id) map.set(r.id, r.value || r.displayName || '');
+  });
+  return { spId: sp.id, appRoleMap: map };
+}
+
+async function getUserAppRoles(userId) {
+  const graphToken = await getGraphToken();
+  const { spId, appRoleMap } = await getServicePrincipalRoleMap(graphToken);
+
+  const url = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments?$top=999`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${graphToken}` }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to fetch appRoleAssignments: ${res.status} ${res.statusText} - ${text}`);
+  }
+  const data = await res.json();
+  const assignments = Array.isArray(data.value) ? data.value : [];
+
+  const roles = assignments
+    .filter(a => a.resourceId === spId && a.appRoleId && appRoleMap.has(a.appRoleId))
+    .map(a => appRoleMap.get(a.appRoleId))
+    .filter(Boolean);
+
+  return roles;
+}
+
 module.exports = {
   connectToDatabase,
   getBlobServiceClient,
   getEventGridClient,
   emitEvent,
   getClientPrincipal,
-  generateBlobSasUrl
+  generateBlobSasUrl,
+  getUserAppRoles
 };
