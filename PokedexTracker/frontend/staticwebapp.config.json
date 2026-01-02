@@ -9,7 +9,7 @@
       "allowedRoles": ["authenticated"]
     },
     {
-      "route": "/api/adminrole",
+      "route": "/api/checkadmin",
       "allowedRoles": ["anonymous"]
     },
     {
