@@ -17,16 +17,42 @@ module.exports = async function (context, req) {
       return;
     }
 
-    const roles = await getUserAppRoles(principal.userId);
-    const isAdmin = roles.includes('Admin');
+    let userId = principal.userId;
+    let roles = [];
+    let lookedUp = false;
 
+    // Try to get roles with userId
+    try {
+      roles = await getUserAppRoles(userId);
+    } catch (err) {
+      // If 404, look up by email
+      if (err.message && err.message.includes('Resource') && principal.userDetails) {
+        // Look up user by email
+        const graphToken = await require('../shared/utils').getGraphToken();
+        const email = principal.userDetails;
+        const url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${email}'&$select=id`;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${graphToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.value) && data.value.length) {
+            userId = data.value[0].id;
+            lookedUp = true;
+            roles = await getUserAppRoles(userId);
+          }
+        }
+      }
+    }
+    const isAdmin = roles.includes('Admin');
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         isAdmin, 
         roles,
-        userId: principal.userId 
+        userId,
+        lookedUpByEmail: lookedUp
       })
     };
   } catch (error) {
