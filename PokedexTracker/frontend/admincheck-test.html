@@ -12,10 +12,10 @@
   </style>
 </head>
 <body>
-  <h1>Admincheck Test</h1>
+    <h1>Admin Role Check Test</h1>
   <p>Use the buttons to call the API and view the raw response.</p>
   <div>
-    <button id="call-btn">Call /api/admincheck</button>
+      <button id="call-btn">Call /api/checkadmin</button>
     <button id="me-btn">Call /.auth/me</button>
   </div>
   <p id="status"></p>
@@ -38,7 +38,7 @@
       }
     }
 
-    document.getElementById('call-btn').addEventListener('click', () => callEndpoint('/api/admincheck'));
+      document.getElementById('call-btn').addEventListener('click', () => callEndpoint('/api/checkadmin'));
     document.getElementById('me-btn').addEventListener('click', () => callEndpoint('/.auth/me'));
   </script>
 </body>
