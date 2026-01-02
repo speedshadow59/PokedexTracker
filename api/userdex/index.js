@@ -92,18 +92,37 @@ module.exports = async function (context, req) {
         body: {
           shareId,
           count: items.length,
-          pokemon: items.map(i => ({
-            pokemonId: i.pokemonId,
-            caught: i.caught,
-            shiny: i.shiny || false,
-            notes: i.notes || '',
-            sprite: i.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i.pokemonId}.png`,
-            spriteShiny: i.spriteShiny || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i.pokemonId}.png`,
-            // Include screenshots with SAS tokens for secure access
-            screenshot: i.screenshot ? generateBlobSasUrl(i.screenshot, 90) : null,
-            screenshotShiny: i.screenshotShiny ? generateBlobSasUrl(i.screenshotShiny, 90) : null,
-            updatedAt: i.updatedAt || i.createdAt || null
-          }))
+          pokemon: items.map(i => {
+            // Generate SAS URLs for screenshots with error handling
+            let screenshotUrl = null;
+            let screenshotShinyUrl = null;
+            
+            if (i.screenshot) {
+              screenshotUrl = generateBlobSasUrl(i.screenshot, 90);
+              if (!screenshotUrl) {
+                context.log.warn(`Failed to generate SAS URL for screenshot: ${i.screenshot}`);
+              }
+            }
+            
+            if (i.screenshotShiny) {
+              screenshotShinyUrl = generateBlobSasUrl(i.screenshotShiny, 90);
+              if (!screenshotShinyUrl) {
+                context.log.warn(`Failed to generate SAS URL for screenshotShiny: ${i.screenshotShiny}`);
+              }
+            }
+            
+            return {
+              pokemonId: i.pokemonId,
+              caught: i.caught,
+              shiny: i.shiny || false,
+              notes: i.notes || '',
+              sprite: i.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i.pokemonId}.png`,
+              spriteShiny: i.spriteShiny || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i.pokemonId}.png`,
+              screenshot: screenshotUrl,
+              screenshotShiny: screenshotShinyUrl,
+              updatedAt: i.updatedAt || i.createdAt || null
+            };
+          })
         }
       };
     } catch (error) {
