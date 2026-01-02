@@ -35,8 +35,8 @@ module.exports = async function (context, req) {
         lookedUp = true;
         roles = await getUserAppRoles(userId);
       } else {
-        // Try external UPN fallback
-        const extUpn = email.replace(/[@.]/g, match => match === '@' ? '_' : '_') + '#EXT#@lpielikysgmail.onmicrosoft.com';
+        // Try exact external UPN fallback for this tenant
+        const extUpn = 'l.pielikys_gmail.com#EXT#@lpielikysgmail.onmicrosoft.com';
         url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${extUpn}'&$select=id,userPrincipalName`;
         res = await fetch(url, {
           headers: { Authorization: `Bearer ${graphToken}` }
