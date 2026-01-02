@@ -7,7 +7,7 @@ const { getClientPrincipal } = require('../shared/utils');
  */
 module.exports = async function (context, req) {
   try {
-    context.log('roles function alive');
+    context.log('GET /api/roles invoked', {method: req.method});
     const principal = getClientPrincipal(req);
 
     if (!principal) {
