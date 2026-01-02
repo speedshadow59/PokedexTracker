@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admincheck Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    button { margin-right: 8px; }
+    pre { background: #f5f5f5; padding: 12px; border: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <h1>Admincheck Test</h1>
+  <p>Use the buttons to call the API and view the raw response.</p>
+  <div>
+    <button id="call-btn">Call /api/admincheck</button>
+    <button id="me-btn">Call /.auth/me</button>
+  </div>
+  <p id="status"></p>
+  <pre id="output">(no response yet)</pre>
+  <script>
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+
+    async function callEndpoint(url) {
+      statusEl.textContent = 'Loading ' + url + '...';
+      outputEl.textContent = '';
+      try {
+        const res = await fetch(url + '?v=' + Date.now(), { credentials: 'include' });
+        const text = await res.text();
+        statusEl.textContent = `${res.status} ${res.statusText}`;
+        outputEl.textContent = text;
+      } catch (err) {
+        statusEl.textContent = 'Fetch failed';
+        outputEl.textContent = err.toString();
+      }
+    }
+
+    document.getElementById('call-btn').addEventListener('click', () => callEndpoint('/api/admincheck'));
+    document.getElementById('me-btn').addEventListener('click', () => callEndpoint('/.auth/me'));
+  </script>
+</body>
+</html>
