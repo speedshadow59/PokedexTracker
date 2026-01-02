@@ -1,5 +1,5 @@
 const { MongoClient } = require('mongodb');
-const { BlobServiceClient } = require('@azure/storage-blob');
+const { BlobServiceClient, BlobSASPermissions, generateBlobSASQueryParameters, StorageSharedKeyCredential } = require('@azure/storage-blob');
 const { EventGridPublisherClient, AzureKeyCredential } = require('@azure/eventgrid');
 const { Buffer } = require('buffer');
 
@@ -49,6 +49,51 @@ function getEventGridClient() {
   return new EventGridPublisherClient(endpoint, "EventGrid", new AzureKeyCredential(key));
 }
 
+// Generate SAS URL for blob with read-only permissions
+function generateBlobSasUrl(blobUrl, expiryDays = 90) {
+  try {
+    // Parse connection string to get account name and key
+    const connectionString = process.env.BLOB_STORAGE_CONNECTION_STRING;
+    if (!connectionString) {
+      throw new Error('BLOB_STORAGE_CONNECTION_STRING is not set');
+    }
+
+    const parts = connectionString.split(';');
+    const accountName = parts.find(p => p.startsWith('AccountName='))?.split('=')[1];
+    const accountKey = parts.find(p => p.startsWith('AccountKey='))?.split('=')[1];
+
+    if (!accountName || !accountKey) {
+      throw new Error('Could not parse account name or key from connection string');
+    }
+
+    // Parse blob URL to get container and blob name
+    const url = new URL(blobUrl);
+    const pathParts = url.pathname.split('/').filter(p => p);
+    if (pathParts.length < 2) {
+      throw new Error('Invalid blob URL format');
+    }
+
+    const containerName = pathParts[0];
+    const blobName = pathParts.slice(1).join('/');
+
+    // Create SAS token
+    const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+    const sasOptions = {
+      containerName,
+      blobName,
+      permissions: BlobSASPermissions.parse('r'), // read-only
+      startsOn: new Date(),
+      expiresOn: new Date(new Date().valueOf() + expiryDays * 24 * 60 * 60 * 1000)
+    };
+
+    const sasToken = generateBlobSASQueryParameters(sasOptions, sharedKeyCredential).toString();
+    return `${blobUrl}?${sasToken}`;
+  } catch (error) {
+    console.error('Error generating SAS URL:', error.message);
+    return null;
+  }
+}
+
 // Event Grid: Emit Event
 async function emitEvent(eventType, subject, data) {
   try {
@@ -88,5 +133,6 @@ module.exports = {
   getBlobServiceClient,
   getEventGridClient,
   emitEvent,
-  getClientPrincipal
+  getClientPrincipal,
+  generateBlobSasUrl
 };

@@ -1,4 +1,4 @@
-const { connectToDatabase, emitEvent, getClientPrincipal, getBlobServiceClient } = require('../shared/utils');
+const { connectToDatabase, emitEvent, getClientPrincipal, getBlobServiceClient, generateBlobSasUrl } = require('../shared/utils');
 
 /**
  * GET /api/userdex - Retrieve all caught Pokémon for authenticated user
@@ -99,6 +99,9 @@ module.exports = async function (context, req) {
             notes: i.notes || '',
             sprite: i.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i.pokemonId}.png`,
             spriteShiny: i.spriteShiny || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i.pokemonId}.png`,
+            // Include screenshots with SAS tokens for secure access
+            screenshot: i.screenshot ? generateBlobSasUrl(i.screenshot, 90) : null,
+            screenshotShiny: i.screenshotShiny ? generateBlobSasUrl(i.screenshotShiny, 90) : null,
             updatedAt: i.updatedAt || i.createdAt || null
           }))
         }

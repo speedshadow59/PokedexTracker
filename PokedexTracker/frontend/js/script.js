@@ -184,12 +184,22 @@ function openSharedPokemonModal(entry) {
     document.getElementById('catchNotes').value = entry.notes || '';
     document.getElementById('catchNotes').disabled = true;
     
-    // Hide screenshot section entirely for shared view (blob storage is private)
+    // Show screenshots if available (now with SAS tokens for secure access)
     const screenshotPreview = document.getElementById('screenshotPreview');
-    screenshotPreview.style.display = 'none';
+    const screenshotUrl = entry.shiny && entry.screenshotShiny ? entry.screenshotShiny : entry.screenshot;
+    
+    if (screenshotUrl) {
+        screenshotPreview.src = screenshotUrl;
+        screenshotPreview.style.display = 'block';
+    } else {
+        screenshotPreview.style.display = 'none';
+    }
+    
+    // Hide upload controls for shared view
     document.getElementById('screenshotUpload').style.display = 'none';
     const screenshotLabel = document.querySelector('label[for="screenshotUpload"]');
     if (screenshotLabel) screenshotLabel.style.display = 'none';
+    
     document.getElementById('saveBtn').style.display = 'none';
     document.getElementById('uncatchBtn').style.display = 'none';
     document.getElementById('modalAuthNotice').style.display = 'block';
