@@ -5,8 +5,8 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": ["get", "put", "delete"],
-      "route": "userdex"
+      "methods": ["get", "put", "delete", "post"],
+      "route": "userdex/{*extra}"
     },
     {
       "type": "http",
