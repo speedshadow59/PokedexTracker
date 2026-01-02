@@ -415,44 +415,66 @@ body {
 .share-modal-content {
     max-width: none !important;
     width: auto !important;
-    min-width: 500px !important;
-    padding: 40px 45px !important;
+    min-width: 600px !important;
+    padding: 50px 60px !important;
     margin: 20px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 30px !important;
 }
 
 .share-modal-body {
     padding: 0 !important;
-    gap: 0 !important;
-    min-width: 450px;
+    gap: 20px !important;
+    min-width: 500px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+}
+
+.share-link-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.share-link-container label {
+    font-size: 16px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
 }
 
 .share-link-input {
     width: 100%;
-    min-width: 450px;
-    padding: 16px 20px;
+    padding: 18px 20px;
     font-size: 14px;
     border: 2px solid #e5e7eb;
     border-radius: 10px;
     background: #f9fafb;
-    margin-bottom: 20px;
     text-align: left;
     font-family: 'Courier New', monospace;
     color: #374151;
     word-break: break-all;
     line-height: 1.6;
+    transition: all 0.2s ease;
 }
 
 .share-link-input:focus {
     outline: none;
     border-color: #667eea;
     background: white;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .copy-link-btn {
     width: 100%;
-    padding: 14px;
+    padding: 16px 20px;
     font-size: 15px;
     font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 @keyframes fadeIn {
