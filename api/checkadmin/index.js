@@ -3,15 +3,18 @@ const { getClientPrincipal, getUserAppRoles } = require('../shared/utils');
 
 module.exports = async function (context, req) {
   try {
+
     const principal = getClientPrincipal(req);
-    
+    // Debug: log incoming principal
+    context.log('DEBUG: principal', principal);
     if (!principal || !principal.userId) {
       context.res = {
         status: 401,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           isAdmin: false, 
-          error: 'Not authenticated' 
+          error: 'Not authenticated',
+          debug: { principal }
         })
       };
       return;
@@ -34,6 +37,7 @@ module.exports = async function (context, req) {
       });
       let data = res.ok ? await res.json() : null;
       usersDebug = data;
+      context.log('DEBUG: Graph lookup by email', { email, url, usersDebug: data });
       if (data && Array.isArray(data.value) && data.value.length) {
         userId = data.value[0].id;
         lookedUp = true;
@@ -41,6 +45,7 @@ module.exports = async function (context, req) {
         let appRoleUrl = `https://graph.microsoft.com/v1.0/users/${encode(userId)}/appRoleAssignments`;
         let appRoleRes = await fetch(appRoleUrl, { headers: { Authorization: `Bearer ${graphToken}` } });
         appRoleAssignmentsDebug = appRoleRes.ok ? await appRoleRes.json() : null;
+        context.log('DEBUG: appRoleAssignments', { userId, appRoleAssignmentsDebug });
         roles = await getUserAppRoles(userId);
       } else {
         // Try exact external UPN fallback for this tenant
@@ -51,6 +56,7 @@ module.exports = async function (context, req) {
         });
         data = res.ok ? await res.json() : null;
         usersDebug = data;
+        context.log('DEBUG: Graph lookup by extUpn', { extUpn, url, usersDebug: data });
         if (data && Array.isArray(data.value) && data.value.length) {
           userId = data.value[0].id;
           lookedUp = true;
@@ -58,6 +64,7 @@ module.exports = async function (context, req) {
           let appRoleUrl = `https://graph.microsoft.com/v1.0/users/${encode(userId)}/appRoleAssignments`;
           let appRoleRes = await fetch(appRoleUrl, { headers: { Authorization: `Bearer ${graphToken}` } });
           appRoleAssignmentsDebug = appRoleRes.ok ? await appRoleRes.json() : null;
+          context.log('DEBUG: appRoleAssignments (extUpn)', { userId, appRoleAssignmentsDebug });
           roles = await getUserAppRoles(userId);
         } else {
           // Try startswith fallback for debugging
@@ -67,6 +74,7 @@ module.exports = async function (context, req) {
           });
           data = res.ok ? await res.json() : null;
           usersDebug = data;
+          context.log('DEBUG: Graph lookup by startswith', { url, usersDebug: data });
         }
       }
     }
@@ -79,7 +87,12 @@ module.exports = async function (context, req) {
         roles,
         userId,
         lookedUpByEmail: lookedUp,
-        userDetails: email || null
+        userDetails: email || null,
+        debug: {
+          principal,
+          usersDebug,
+          appRoleAssignmentsDebug
+        }
       })
     };
   } catch (error) {
