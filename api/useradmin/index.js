@@ -22,7 +22,7 @@ module.exports = async function (context, req) {
         // List users from Microsoft Graph (Entra ID)
         const graphToken = await getGraphToken();
         const url = 'https://graph.microsoft.com/v1.0/users?$top=100&$select=id,displayName,mail,userPrincipalName,accountEnabled';
-        const res = await fetch(url, { headers: { Authorization: `Bearer ' + graphToken } });
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
         if (!res.ok) {
             const text = await res.text();
             context.res = { status: 500, body: { error: 'Failed to fetch users from Graph', details: text } };
