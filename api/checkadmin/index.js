@@ -20,7 +20,7 @@ module.exports = async function (context, req) {
     if (action === 'listUsers') {
       try {
         const graphToken = await getGraphToken();
-        const url = 'https://graph.microsoft.com/v1.0/users?$top=100&$count=true';
+        const url = 'https://graph.microsoft.com/v1.0/users?$top=100&$count=true&$select=id,displayName,userPrincipalName,mail,accountEnabled';
         const res = await fetch(url, {
           headers: {
             Authorization: `Bearer ${graphToken}`,
