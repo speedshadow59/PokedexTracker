@@ -207,6 +207,32 @@ async function getUserAppRoles(userId) {
   return roles;
 }
 
+
+// Admin helpers
+async function getAllUsers() {
+  const db = await connectToDatabase();
+  const users = await db.collection('users').find({}).toArray();
+  return users;
+}
+
+async function setUserRole(userId, role) {
+  const db = await connectToDatabase();
+  const result = await db.collection('users').updateOne(
+    { _id: userId },
+    { $set: { role } }
+  );
+  return { matched: result.matchedCount, modified: result.modifiedCount };
+}
+
+async function blockUser(userId) {
+  const db = await connectToDatabase();
+  const result = await db.collection('users').updateOne(
+    { _id: userId },
+    { $set: { blocked: true } }
+  );
+  return { matched: result.matchedCount, modified: result.modifiedCount };
+}
+
 module.exports = {
   connectToDatabase,
   getBlobServiceClient,
@@ -215,5 +241,8 @@ module.exports = {
   getClientPrincipal,
   generateBlobSasUrl,
   getUserAppRoles,
-  getGraphToken
+  getGraphToken,
+  getAllUsers,
+  setUserRole,
+  blockUser
 };

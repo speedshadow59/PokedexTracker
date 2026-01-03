@@ -37,16 +37,16 @@
 <main class="container">
 
     <!-- Admin Dashboard (hidden by default, shown for admins) -->
-    <section id="adminDashboard" class="admin-dashboard" style="display:none; margin-bottom: 32px;">
-        <h2>Admin Dashboard</h2>
-        <div id="adminTabs" style="margin-bottom: 16px;">
-            <button id="adminTabUsers" class="admin-tab-btn active">User Management</button>
-            <button id="adminTabMedia" class="admin-tab-btn">Content Moderation</button>
-            <button id="adminTabAudit" class="admin-tab-btn">Audit Log</button>
+    <section id="adminDashboard" class="admin-dashboard card" style="display:none; margin-bottom: 32px;">
+        <h2 class="admin-dashboard-title">Admin Dashboard</h2>
+        <div id="adminTabs" class="admin-tabs">
+            <button id="adminTabUsers" class="admin-tab-btn active pill-btn">User Management</button>
+            <button id="adminTabMedia" class="admin-tab-btn pill-btn">Content Moderation</button>
+            <button id="adminTabAudit" class="admin-tab-btn pill-btn">Audit Log</button>
         </div>
-        <div id="adminPanelUsers" class="admin-panel-section"></div>
-        <div id="adminPanelMedia" class="admin-panel-section" style="display:none;"></div>
-        <div id="adminPanelAudit" class="admin-panel-section" style="display:none;"></div>
+        <div id="adminPanelUsers" class="admin-panel-section panel-section"></div>
+        <div id="adminPanelMedia" class="admin-panel-section panel-section" style="display:none;"></div>
+        <div id="adminPanelAudit" class="admin-panel-section panel-section" style="display:none;"></div>
     </section>
 
     <section id="authPanel" class="auth-panel">

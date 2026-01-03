@@ -1,3 +1,56 @@
+/* Admin Dashboard Styles */
+.admin-dashboard.card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 30px;
+    margin-bottom: 32px;
+}
+
+.admin-dashboard-title {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 24px;
+    font-weight: 600;
+    color: #3730a3;
+}
+
+.admin-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.admin-tab-btn {
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid #e5e7eb;
+    background: #f3f4f6;
+    color: #3730a3;
+    border-radius: 999px;
+    padding: 9px 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.admin-tab-btn.active, .admin-tab-btn:focus {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-color: #667eea;
+    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.18);
+}
+.admin-tab-btn:not(.active):hover {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.panel-section {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 24px 18px;
+    margin-bottom: 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    min-height: 120px;
+}
 * {
     box-sizing: border-box;
 }
