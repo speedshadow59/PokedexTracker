@@ -1,5 +1,18 @@
 // Minimal test version without dependencies to debug routing
 const { getClientPrincipal, getUserAppRoles, getServicePrincipalRoleMap } = require('../shared/utils');
+console.log('DEBUG utils import:', { getClientPrincipal, getUserAppRoles, getServicePrincipalRoleMap });
+if (typeof getServicePrincipalRoleMap !== 'function') {
+  module.exports = async function (context, req) {
+    context.res = {
+      status: 500,
+      body: {
+        error: 'getServicePrincipalRoleMap is not a function',
+        details: typeof getServicePrincipalRoleMap
+      }
+    };
+    return;
+  };
+}
 
 module.exports = async function (context, req) {
   const { getGraphToken, setUserRole, blockUser } = require('../shared/utils');
