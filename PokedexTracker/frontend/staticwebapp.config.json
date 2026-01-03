@@ -36,14 +36,6 @@
       "route": "/api/media/*",
       "allowedRoles": ["authenticated"]
     },
-    {
-      "route": "/api/usermanagement",
-      "allowedRoles": ["anonymous"]
-    },
-    {
-      "route": "/api/usermanagement/*",
-      "allowedRoles": ["anonymous"]
-    }
   ],
   "responseOverrides": {
     "401": {
