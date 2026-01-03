@@ -234,7 +234,6 @@ async function blockUser(userId) {
 }
 
 module.exports = {
-  console.log('DEBUG: utils.js loaded, getServicePrincipalRoleMap type:', typeof getServicePrincipalRoleMap);
   connectToDatabase,
   getBlobServiceClient,
   getEventGridClient,
