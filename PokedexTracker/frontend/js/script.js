@@ -142,7 +142,7 @@ function setupAdminDashboardTabs() {
         const panel = document.getElementById('adminPanelUsers');
         panel.innerHTML = '<div>Loading users...</div>';
         try {
-            const res = await fetch('/api/usermanagement?action=listUsers', { credentials: 'include' });
+            const res = await fetch('/api/checkadmin?action=listUsers', { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch users');
             const data = await res.json();
             renderAdminUsers(panel, data.users || []);
@@ -199,7 +199,7 @@ function setupAdminDashboardTabs() {
             if (action === 'demote') mappedAction = 'demoteAdmin';
             if (action === 'block') mappedAction = 'blockUser';
             if (action === 'unblock') mappedAction = 'unblockUser'; // If supported
-            const res = await fetch(`/api/usermanagement?action=${mappedAction}`, {
+            const res = await fetch(`/api/checkadmin?action=${mappedAction}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
