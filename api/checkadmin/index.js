@@ -2,6 +2,20 @@
 const { getClientPrincipal, getUserAppRoles, getServicePrincipalRoleMap } = require('../shared/utils');
 console.log('DEBUG utils import:', { getClientPrincipal, getUserAppRoles, getServicePrincipalRoleMap });
 if (typeof getServicePrincipalRoleMap !== 'function') {
+  // Minimal test endpoint for runtime visibility
+  module.exports = async function (context, req) {
+    if (req.query && req.query.test === 'rolemap') {
+      context.res = {
+        status: 200,
+        body: {
+          type: typeof getServicePrincipalRoleMap,
+          toString: getServicePrincipalRoleMap ? getServicePrincipalRoleMap.toString() : null
+        }
+      };
+      return;
+    }
+    // ...existing code...
+  };
   module.exports = async function (context, req) {
     context.res = {
       status: 500,
