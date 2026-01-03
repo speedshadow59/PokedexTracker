@@ -34,13 +34,22 @@ module.exports = async function (context, req) {
           context.res = { status: 500, body: { error: 'Failed to fetch users from Graph', details: text, status: res.status, statusText: res.statusText, raw: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
           return;
         }
-        // Map to expected frontend format
-        const users = (data.value || []).map(u => ({
-          id: u.id,
-          name: u.displayName || u.userPrincipalName || u.mail,
-          email: u.mail || u.userPrincipalName,
-          isAdmin: false, // Optionally, fetch roles per user if needed
-          blocked: u.accountEnabled === false
+        // For each user, fetch their app roles and set isAdmin accordingly
+        const users = await Promise.all((data.value || []).map(async u => {
+          let roles = [];
+          try {
+            roles = await getUserAppRoles(u.id);
+          } catch (e) {
+            // If role lookup fails, treat as non-admin
+            roles = [];
+          }
+          return {
+            id: u.id,
+            name: u.displayName || u.userPrincipalName || u.mail,
+            email: u.mail || u.userPrincipalName,
+            isAdmin: roles.includes('Admin'),
+            blocked: u.accountEnabled === false
+          };
         }));
         context.res = { status: 200, body: { users, rawGraph: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
         return;
