@@ -5,9 +5,16 @@ const checkAdmin = require('../checkadmin');
 
 module.exports = async function (context, req) {
     context.log('useradmin: function start');
+
     try {
         // Check admin status
         const adminCheck = await checkAdmin(context, req);
+        context.log('useradmin: adminCheck', adminCheck);
+        if (!adminCheck || typeof adminCheck.isAdmin === 'undefined') {
+            context.res = { status: 401, body: { error: 'Admin check failed', adminCheck } };
+            context.log('useradmin: adminCheck failed', adminCheck);
+            return;
+        }
         if (!adminCheck.isAdmin) {
             context.res = { status: 403, body: { error: 'Admin access required' } };
             context.log('useradmin: not admin');
