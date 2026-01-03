@@ -1,5 +1,5 @@
 // Minimal test version without dependencies to debug routing
-const { getClientPrincipal, getUserAppRoles } = require('../shared/utils');
+const { getClientPrincipal, getUserAppRoles, getServicePrincipalRoleMap } = require('../shared/utils');
 
 module.exports = async function (context, req) {
   const { getGraphToken, setUserRole, blockUser } = require('../shared/utils');
@@ -62,7 +62,7 @@ module.exports = async function (context, req) {
       try {
         const graphToken = await getGraphToken();
         // Get service principal and appRoleMap
-        const { spId, appRoleMap } = await require('../shared/utils').getServicePrincipalRoleMap(graphToken);
+        const { spId, appRoleMap } = await getServicePrincipalRoleMap(graphToken);
         // Find the Admin appRoleId
         const adminRoleId = [...appRoleMap.entries()].find(([id, val]) => val === 'Admin')?.[0];
         if (!adminRoleId) throw new Error('Admin app role not found');
