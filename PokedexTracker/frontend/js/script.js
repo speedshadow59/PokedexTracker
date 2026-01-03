@@ -198,7 +198,7 @@ function setupAdminDashboardTabs() {
             if (action === 'promote') mappedAction = 'promoteAdmin';
             if (action === 'demote') mappedAction = 'demoteAdmin';
             if (action === 'block') mappedAction = 'blockUser';
-            if (action === 'unblock') mappedAction = 'unblockUser'; // If supported
+            if (action === 'unblock') mappedAction = 'unblockUser';
             const res = await fetch(`/api/checkadmin?action=${mappedAction}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -206,8 +206,27 @@ function setupAdminDashboardTabs() {
                 body: JSON.stringify({ userId, action: mappedAction })
             });
             if (!res.ok) throw new Error('Failed to update user');
-            // Wait 1.5 seconds to allow Graph API propagation
-            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Poll until the user's status actually changes, or timeout after 15s
+            const pollInterval = 1200;
+            const timeout = 15000;
+            const start = Date.now();
+            let lastStatus = null;
+            let changed = false;
+            while (Date.now() - start < timeout) {
+                const usersRes = await fetch('/api/checkadmin?action=listUsers', { credentials: 'include' });
+                if (!usersRes.ok) break;
+                const data = await usersRes.json();
+                const user = (data.users || []).find(u => u.id === userId);
+                if (!user) break;
+                // Determine if the relevant status has changed
+                if (action === 'promote' && user.isAdmin) { changed = true; break; }
+                if (action === 'demote' && !user.isAdmin) { changed = true; break; }
+                if (action === 'block' && user.blocked) { changed = true; break; }
+                if (action === 'unblock' && !user.blocked) { changed = true; break; }
+                lastStatus = { isAdmin: user.isAdmin, blocked: user.blocked };
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
             await loadAdminUsers();
         } catch (err) {
             panel.innerHTML = '<div class="empty-state">Failed to update user.</div>';
