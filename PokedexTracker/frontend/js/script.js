@@ -452,18 +452,23 @@ async function fetchAndApplyCurrentUser() {
         if (res.ok) {
             const data = await res.json();
             const principal = data && data.clientPrincipal ? data.clientPrincipal : null;
+            const prevUserId = currentUserPrincipal && currentUserPrincipal.userId;
             currentUserPrincipal = principal;
             const userInfoEl = document.getElementById('userInfo');
             const userNameLabel = document.getElementById('userNameLabel');
             const loginLink = document.getElementById('loginLink');
             const logoutLink = document.getElementById('logoutLink');
             const authPanel = document.getElementById('authPanel');
+            // Always clear caught data on login/user change
+            saveCaughtData({});
             if (principal) {
                 if (userInfoEl) userInfoEl.style.display = 'inline-flex';
                 if (userNameLabel) userNameLabel.textContent = principal.userDetails || principal.userId;
                 if (loginLink) loginLink.style.display = 'none';
                 if (logoutLink) logoutLink.style.display = 'inline-block';
                 if (authPanel) authPanel.style.display = 'none';
+                // Load caught Pokémon from backend for this user
+                await loadUserCaughtData();
             } else {
                 if (userInfoEl) userInfoEl.style.display = 'none';
                 if (userNameLabel) userNameLabel.textContent = '';
