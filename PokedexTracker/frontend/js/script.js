@@ -206,6 +206,8 @@ function setupAdminDashboardTabs() {
                 body: JSON.stringify({ userId, action: mappedAction })
             });
             if (!res.ok) throw new Error('Failed to update user');
+            // Wait 1.5 seconds to allow Graph API propagation
+            await new Promise(resolve => setTimeout(resolve, 1500));
             await loadAdminUsers();
         } catch (err) {
             panel.innerHTML = '<div class="empty-state">Failed to update user.</div>';
