@@ -1,3 +1,53 @@
+/* Admin Dashboard Table Styles */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    font-size: 1rem;
+}
+.admin-table th, .admin-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+}
+.admin-table th {
+    background: #f7f7f7;
+    font-weight: 600;
+}
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+.admin-action-btn {
+    margin-right: 6px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    background: #e0e7ff;
+    color: #222;
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: background 0.2s;
+}
+.admin-action-btn:hover {
+    background: #b4c6fc;
+}
+.admin-role {
+    color: #2563eb;
+    font-weight: 600;
+}
+.blocked {
+    color: #b91c1c;
+    font-weight: 600;
+}
+.empty-state {
+    color: #888;
+    text-align: center;
+    padding: 24px 0;
+    font-size: 1.1em;
+}
 /* Admin Dashboard Styles */
 .admin-dashboard.card {
     background: white;

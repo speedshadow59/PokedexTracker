@@ -135,7 +135,77 @@ function setupAdminDashboardTabs() {
         panelUsers.style.display = '';
         panelMedia.style.display = 'none';
         panelAudit.style.display = 'none';
+        loadAdminUsers();
     };
+    // --- Admin Dashboard Functionality ---
+    async function loadAdminUsers() {
+        const panel = document.getElementById('adminPanelUsers');
+        panel.innerHTML = '<div>Loading users...</div>';
+        try {
+            const res = await fetch('/api/admin', { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to fetch users');
+            const data = await res.json();
+            renderAdminUsers(panel, data.users || []);
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Failed to load users.</div>';
+        }
+    }
+
+    function renderAdminUsers(panel, users) {
+        if (!users.length) {
+            panel.innerHTML = '<div class="empty-state">No users found.</div>';
+            return;
+        }
+        let html = `<table class="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+        for (const user of users) {
+            html += `<tr>
+                <td>${user.name || ''}</td>
+                <td>${user.email || ''}</td>
+                <td>${user.isAdmin ? '<span class="admin-role">Admin</span>' : 'User'}</td>
+                <td>${user.blocked ? '<span class="blocked">Blocked</span>' : 'Active'}</td>
+                <td>
+                    ${user.isAdmin
+                        ? `<button class="admin-action-btn demote-btn" data-id="${user.id}">Demote</button>`
+                        : `<button class="admin-action-btn promote-btn" data-id="${user.id}">Promote</button>`}
+                    ${user.blocked
+                        ? `<button class="admin-action-btn unblock-btn" data-id="${user.id}">Unblock</button>`
+                        : `<button class="admin-action-btn block-btn" data-id="${user.id}">Block</button>`}
+                </td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        panel.innerHTML = html;
+        // Wire up action buttons
+        panel.querySelectorAll('.promote-btn').forEach(btn => {
+            btn.onclick = () => adminUserAction(btn.dataset.id, 'promote');
+        });
+        panel.querySelectorAll('.demote-btn').forEach(btn => {
+            btn.onclick = () => adminUserAction(btn.dataset.id, 'demote');
+        });
+        panel.querySelectorAll('.block-btn').forEach(btn => {
+            btn.onclick = () => adminUserAction(btn.dataset.id, 'block');
+        });
+        panel.querySelectorAll('.unblock-btn').forEach(btn => {
+            btn.onclick = () => adminUserAction(btn.dataset.id, 'unblock');
+        });
+    }
+
+    async function adminUserAction(userId, action) {
+        const panel = document.getElementById('adminPanelUsers');
+        panel.innerHTML = '<div>Updating...</div>';
+        try {
+            const res = await fetch('/api/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ userId, action })
+            });
+            if (!res.ok) throw new Error('Failed to update user');
+            await loadAdminUsers();
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Failed to update user.</div>';
+        }
+    }
     tabMedia.onclick = () => {
         tabUsers.classList.remove('active');
         tabMedia.classList.add('active');
