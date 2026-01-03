@@ -1,4 +1,4 @@
-// Admin endpoints: user management (list, promote/demote, block)
+// Useradmin endpoints: user management (list, promote/demote, block)
 // Protect all actions with admin check
 const { getGraphToken, getUserById, getAllUsers, setUserRole, blockUser } = require('../shared/utils');
 const checkAdmin = require('../checkadmin');
