@@ -22,13 +22,18 @@ module.exports = async function (context, req) {
         // List users from Microsoft Graph (Entra ID)
         try {
             const graphToken = await getGraphToken();
-            const url = 'https://graph.microsoft.com/v1.0/users?$top=100';
-            const res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+            const url = 'https://graph.microsoft.com/v1.0/users?$top=100&$count=true';
+            const res = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${graphToken}`,
+                    'ConsistencyLevel': 'eventual'
+                }
+            });
             const text = await res.text();
             let data = {};
             try { data = JSON.parse(text); } catch (e) { data = { parseError: e.message, raw: text }; }
             if (!res.ok) {
-                context.res = { status: 500, body: { error: 'Failed to fetch users from Graph', details: text, status: res.status, statusText: res.statusText, raw: data } };
+                context.res = { status: 500, body: { error: 'Failed to fetch users from Graph', details: text, status: res.status, statusText: res.statusText, raw: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
                 return;
             }
             // Map to expected frontend format
@@ -39,7 +44,7 @@ module.exports = async function (context, req) {
                 isAdmin: false, // Optionally, fetch roles per user if needed
                 blocked: u.accountEnabled === false
             }));
-            context.res = { status: 200, body: { users, rawGraph: data } };
+            context.res = { status: 200, body: { users, rawGraph: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
             return;
         } catch (err) {
             context.res = { status: 500, body: { error: 'Exception in listUsers', details: err && err.message, stack: err && err.stack } };
