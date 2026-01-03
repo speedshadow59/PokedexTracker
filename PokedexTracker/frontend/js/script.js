@@ -825,37 +825,29 @@ async function fetchPokemonByRegion(offset, limit) {
     try {
         currentPokemonList = [];
         currentSearchResults = null;
-
-        const batchSize = 20;
         const spinnerTextEl = document.getElementById('loadingSpinner').querySelector('p');
 
-        for (let start = 1; start <= limit; start += batchSize) {
-            const end = Math.min(limit, start + batchSize - 1);
-            const batchPromises = [];
+        // Use PokeAPI batch endpoint
+        const apiUrl = `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('Failed to fetch Pokémon batch');
+        const data = await response.json();
+        const results = data.results || [];
 
-            for (let i = start; i <= end; i++) {
-                const dexNumber = offset + i;
-                batchPromises.push(fetchPokemonDetails(dexNumber));
+        // Fetch details for all Pokémon in parallel, but only one network roundtrip for the list
+        const detailPromises = results.map((item, idx) => fetchPokemonDetails(offset + idx + 1));
+        const batchResults = await Promise.all(detailPromises);
+        batchResults.forEach(pokemon => {
+            if (pokemon) {
+                currentPokemonList.push(pokemon);
             }
-
-            const batchResults = await Promise.all(batchPromises);
-
-            batchResults.forEach(pokemon => {
-                if (pokemon) {
-                    currentPokemonList.push(pokemon);
-                }
-            });
-
-            if (spinnerTextEl) {
-                spinnerTextEl.textContent = 'Loading Pokémon... ' + currentPokemonList.length + '/' + limit;
-            }
-
-            renderPokemonGrid();
-            updateProgress();
+        });
+        if (spinnerTextEl) {
+            spinnerTextEl.textContent = 'Loading Pokémon... ' + currentPokemonList.length + '/' + limit;
         }
-
+        renderPokemonGrid();
+        updateProgress();
         document.getElementById('loadingSpinner').style.display = 'none';
-
     } catch (error) {
         console.error('Error fetching Pokemon:', error);
         document.getElementById('loadingSpinner').style.display = 'none';
