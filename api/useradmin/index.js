@@ -276,6 +276,9 @@ module.exports = async function (context, req) {
                     }).toArray();
                     
                     context.log('useradmin: found userPokemon count:', userPokemon.length);
+                    if (userPokemon.length > 0) {
+                        context.log('useradmin: sample userPokemon entry:', userPokemon[0]);
+                    }
                     
                     const totalCaught = userPokemon.length;
                     const shinyCaught = userPokemon.filter(p => p.shiny).length;

@@ -358,6 +358,9 @@ module.exports = async function (context, req) {
   const { pokemonId, caught, shiny, notes, screenshot, screenshotShiny } = req.body || {};
   const userId = authenticatedUserId;
 
+  context.log('userdex PUT: authenticatedUserId =', userId);
+  context.log('userdex PUT: principal =', principal);
+
   // Validate required parameters
   if (!pokemonId) {
     context.res = {
