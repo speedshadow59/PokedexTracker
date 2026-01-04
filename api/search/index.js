@@ -122,16 +122,19 @@ async function runAzureSearch(config, query, options, context) {
 
   const url = `${endpoint}/indexes/${indexName}/docs/search?api-version=2023-11-01`; // stable API version
 
-  // Use wildcard for partial name matching
+  // Use wildcard for partial name matching only if queryType is 'full'
   let searchQuery = query || '*';
+  let queryType = 'simple';
   if (query && query !== '*') {
+    // If query is not a filter, use full for wildcards
     searchQuery = `*${query}*`;
+    queryType = 'full';
   }
   const body = {
     search: searchQuery,
     filter: filter || undefined,
     top: options.topK,
-    queryType: 'simple',
+    queryType,
     searchMode: 'all',
     select: 'id,pokemonId,name,types,region,sprite,spriteShiny'
   };
