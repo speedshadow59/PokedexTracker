@@ -1,6 +1,6 @@
 // Useradmin endpoints: user management (list, promote/demote, block) and content moderation
 // Protect all actions with admin check
-const { getGraphToken, getUserById, getAllUsers, setUserRole, blockUser, unblockUser, connectToDatabase, getBlobServiceClient, getClientPrincipal, getUserAppRoles } = require('../shared/utils');
+const { getGraphToken, getUserById, getAllUsers, setUserRole, blockUser, unblockUser, connectToDatabase, getBlobServiceClient, getClientPrincipal, getUserAppRoles, findUserByIdentifier } = require('../shared/utils');
 
 module.exports = async function (context, req) {
     context.log('useradmin: function start');
@@ -216,17 +216,22 @@ module.exports = async function (context, req) {
                 });
                 
                 if (!res.ok) {
-                    // If direct lookup fails, try searching by userPrincipalName
-                    context.log('useradmin: direct lookup failed, trying UPN search');
-                    const encode = encodeURIComponent;
-                    url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${encode(req.body.userId)}'&$select=id,displayName,userPrincipalName,mail,accountEnabled&_=${timestamp}`;
-                    context.log('useradmin: fetch user by UPN', url);
+                    // If direct lookup fails, try searching by identifier
+                    context.log('useradmin: direct lookup failed, trying identifier search');
+                    const foundUser = await findUserByIdentifier(req.body.userId);
+                    if (!foundUser) {
+                        context.res = { status: 404, body: { error: 'User not found' } };
+                        return;
+                    }
+                    
+                    // Fetch full user data using the found ID
+                    url = `https://graph.microsoft.com/v1.0/users/${foundUser.id}?$select=id,displayName,userPrincipalName,mail,accountEnabled&_=${timestamp}`;
+                    context.log('useradmin: fetch user by found ID', url);
                     res = await fetch(url, {
                         headers: {
                             Authorization: `Bearer ${graphToken}`,
                             'Cache-Control': 'no-cache',
-                            'Pragma': 'no-cache',
-                            'ConsistencyLevel': 'eventual'
+                            'Pragma': 'no-cache'
                         }
                     });
                     
@@ -237,12 +242,7 @@ module.exports = async function (context, req) {
                         return;
                     }
                     
-                    const searchData = await res.json();
-                    if (!searchData.value || searchData.value.length === 0) {
-                        context.res = { status: 404, body: { error: 'User not found' } };
-                        return;
-                    }
-                    userData = searchData.value[0];
+                    userData = await res.json();
                 } else {
                     userData = await res.json();
                 }

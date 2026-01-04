@@ -362,6 +362,53 @@ async function unblockUser(userId) {
   return { success: true, action: 'unblocked' };
 }
 
+// Find user by email/identifier using multiple search strategies
+async function findUserByIdentifier(identifier) {
+  const graphToken = await getGraphToken();
+  const encode = encodeURIComponent;
+  let usersDebug = {};
+
+  // 1. Try userPrincipalName eq identifier
+  let url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${encode(identifier)}'&$select=id,userPrincipalName,displayName,mail`;
+  let res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+  let data = res.ok ? await res.json() : null;
+  usersDebug.byUpn = data;
+
+  if (!(data && Array.isArray(data.value) && data.value.length)) {
+    // 2. Try mail eq identifier
+    url = `https://graph.microsoft.com/v1.0/users?$filter=mail eq '${encode(identifier)}'&$select=id,userPrincipalName,displayName,mail`;
+    res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+    data = res.ok ? await res.json() : null;
+    usersDebug.byMail = data;
+  }
+
+  if (!(data && Array.isArray(data.value) && data.value.length)) {
+    // 3. Try otherMails/any(x:x eq identifier)
+    url = `https://graph.microsoft.com/v1.0/users?$filter=otherMails/any(x:x eq '${encode(identifier)}')&$select=id,userPrincipalName,displayName,mail`;
+    res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+    data = res.ok ? await res.json() : null;
+    usersDebug.byOtherMails = data;
+  }
+
+  if (!(data && Array.isArray(data.value) && data.value.length)) {
+    // 4. Try startswith(userPrincipalName, local part) for partial matches
+    const local = identifier.split('@')[0];
+    url = `https://graph.microsoft.com/v1.0/users?$filter=startswith(userPrincipalName,'${encode(local)}')&$select=id,userPrincipalName,displayName,mail`;
+    res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+    data = res.ok ? await res.json() : null;
+    usersDebug.byStartsWith = data;
+  }
+
+  // Return first match found
+  for (const key of ['byUpn', 'byMail', 'byOtherMails', 'byStartsWith']) {
+    if (usersDebug[key] && Array.isArray(usersDebug[key].value) && usersDebug[key].value.length) {
+      return usersDebug[key].value[0];
+    }
+  }
+
+  return null; // No user found
+}
+
 module.exports = {
   connectToDatabase,
   getBlobServiceClient,
@@ -375,5 +422,6 @@ module.exports = {
   getAllUsers,
   setUserRole,
   blockUser,
-  unblockUser
+  unblockUser,
+  findUserByIdentifier
 };
