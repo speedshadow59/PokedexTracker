@@ -351,7 +351,7 @@ module.exports = async function (context, req) {
 
   context.log('HTTP trigger function processed a PUT request for userdex.');
 
-  const { pokemonId, caught, shiny, notes, screenshot } = req.body || {};
+  const { pokemonId, caught, shiny, notes, screenshot, screenshotShiny } = req.body || {};
   const userId = authenticatedUserId;
 
   // Validate required parameters
@@ -383,7 +383,7 @@ module.exports = async function (context, req) {
     if (existingEntry) {
       // Toggle: If exists and caught is true, update. If caught is false/undefined, remove
       if (caught === false) {
-        // Remove entry (mark as uncaught)
+        // Remove entry (mark as uncaught) - this also deletes screenshots
         result = await collection.deleteOne({
           userId: userId,
           pokemonId: parseInt(pokemonId)
@@ -391,18 +391,81 @@ module.exports = async function (context, req) {
         action = 'uncaught';
       } else {
         // Update entry
+        const updateData = {
+          id: `${userId}-${parseInt(pokemonId)}`,
+          caught: true,
+          shiny: shiny || false,
+          notes: notes || '',
+          updatedAt: new Date()
+        };
+
+        // Handle screenshot updates/deletions
+        if (req.body.hasOwnProperty('screenshot')) {
+          // User explicitly provided screenshot field
+          if (screenshot === null || screenshot === '' || screenshot === undefined) {
+            // User wants to delete the screenshot
+            if (existingEntry.screenshot) {
+              try {
+                const blobServiceClient = getBlobServiceClient();
+                const containerName = process.env.BLOB_CONTAINER_NAME || 'pokemon-media';
+                const containerClient = blobServiceClient.getContainerClient(containerName);
+                
+                const blobUrl = existingEntry.screenshot;
+                const urlParts = blobUrl.split(`/${containerName}/`);
+                const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+                
+                const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+                await blockBlobClient.deleteIfExists();
+                context.log(`Deleted screenshot blob: ${blobName}`);
+              } catch (blobError) {
+                context.log.warn('Error deleting screenshot blob:', blobError.message);
+              }
+            }
+            updateData.screenshot = null;
+          } else {
+            // User provided a new screenshot URL
+            updateData.screenshot = screenshot;
+          }
+        } else {
+          // Screenshot field not provided, keep existing
+          updateData.screenshot = existingEntry.screenshot || null;
+        }
+
+        // Handle screenshotShiny updates/deletions
+        if (req.body.hasOwnProperty('screenshotShiny')) {
+          // User explicitly provided screenshotShiny field
+          if (screenshotShiny === null || screenshotShiny === '' || screenshotShiny === undefined) {
+            // User wants to delete the shiny screenshot
+            if (existingEntry.screenshotShiny) {
+              try {
+                const blobServiceClient = getBlobServiceClient();
+                const containerName = process.env.BLOB_CONTAINER_NAME || 'pokemon-media';
+                const containerClient = blobServiceClient.getContainerClient(containerName);
+                
+                const blobUrl = existingEntry.screenshotShiny;
+                const urlParts = blobUrl.split(`/${containerName}/`);
+                const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+                
+                const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+                await blockBlobClient.deleteIfExists();
+                context.log(`Deleted shiny screenshot blob: ${blobName}`);
+              } catch (blobError) {
+                context.log.warn('Error deleting shiny screenshot blob:', blobError.message);
+              }
+            }
+            updateData.screenshotShiny = null;
+          } else {
+            // User provided a new shiny screenshot URL
+            updateData.screenshotShiny = screenshotShiny;
+          }
+        } else {
+          // ScreenshotShiny field not provided, keep existing
+          updateData.screenshotShiny = existingEntry.screenshotShiny || null;
+        }
+
         result = await collection.updateOne(
           { userId: userId, pokemonId: parseInt(pokemonId) },
-          {
-            $set: {
-              id: `${userId}-${parseInt(pokemonId)}`,
-              caught: true,
-              shiny: shiny || false,
-              notes: notes || '',
-              screenshot: screenshot || null,
-              updatedAt: new Date()
-            }
-          }
+          { $set: updateData }
         );
         action = 'updated';
       }
@@ -417,6 +480,7 @@ module.exports = async function (context, req) {
           shiny: shiny || false,
           notes: notes || '',
           screenshot: screenshot || null,
+          screenshotShiny: screenshotShiny || null,
           createdAt: new Date(),
           updatedAt: new Date()
         });
