@@ -1,23 +1,40 @@
 // Useradmin endpoints: user management (list, promote/demote, block) and content moderation
 // Protect all actions with admin check
-const { getGraphToken, getUserById, getAllUsers, setUserRole, blockUser, connectToDatabase, getBlobServiceClient } = require('../shared/utils');
-const checkAdmin = require('../checkadmin');
+const { getGraphToken, getUserById, getAllUsers, setUserRole, blockUser, connectToDatabase, getBlobServiceClient, getClientPrincipal, getUserAppRoles } = require('../shared/utils');
 
 module.exports = async function (context, req) {
     context.log('useradmin: function start');
 
     try {
-        // Check admin status
-        const adminCheck = await checkAdmin(context, req);
-        context.log('useradmin: adminCheck', adminCheck);
-        if (!adminCheck || typeof adminCheck.isAdmin === 'undefined') {
-            context.res = { status: 401, body: { error: 'Admin check failed', adminCheck } };
-            context.log('useradmin: adminCheck failed', adminCheck);
+        // Copy authentication logic from checkadmin
+        const principal = getClientPrincipal(req);
+        context.log('useradmin: principal', principal);
+        if (!principal || !principal.userId) {
+            context.res = {
+                status: 401,
+                headers: { 'Content-Type': 'application/json' },
+                body: { error: 'Not authenticated', isAdmin: false }
+            };
             return;
         }
-        if (!adminCheck.isAdmin) {
-            context.res = { status: 403, body: { error: 'Admin access required' } };
-            context.log('useradmin: not admin');
+
+        // Check admin role (copy from checkadmin)
+        let roles = [];
+        try {
+            const graphToken = await getGraphToken();
+            roles = await getUserAppRoles(principal.userId);
+        } catch (e) {
+            context.log('useradmin: role lookup failed', e.message);
+            roles = [];
+        }
+        const isAdmin = roles.includes('Admin');
+
+        if (!isAdmin) {
+            context.res = {
+                status: 403,
+                headers: { 'Content-Type': 'application/json' },
+                body: { error: 'Admin access required', isAdmin: false }
+            };
             return;
         }
 
