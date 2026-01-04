@@ -96,7 +96,18 @@ function buildSearchFilter(userId, regionFilter, caughtFilter, shinyFilter) {
 
 async function runAzureSearch(config, query, options, context) {
   const { endpoint, apiKey, indexName } = config;
-  const filter = buildSearchFilter(options.userId, options.regionFilter, options.caughtFilter, options.shinyFilter);
+  // Only filter by userId if provided (for user-specific search)
+  let filter = undefined;
+  if (options.userId) {
+    filter = buildSearchFilter(options.userId, options.regionFilter, options.caughtFilter, options.shinyFilter);
+  } else if (options.regionFilter || options.caughtFilter !== undefined || options.shinyFilter !== undefined) {
+    // Allow region/caught/shiny filters in global mode
+    const clauses = [];
+    if (options.regionFilter) clauses.push(`region eq '${escapeFilterValue(options.regionFilter)}'`);
+    if (options.caughtFilter !== undefined) clauses.push(`caught eq ${options.caughtFilter}`);
+    if (options.shinyFilter !== undefined) clauses.push(`shiny eq ${options.shinyFilter}`);
+    filter = clauses.length ? clauses.join(' and ') : undefined;
+  }
 
   const url = `${endpoint}/indexes/${indexName}/docs/search?api-version=2023-11-01`; // stable API version
 
@@ -155,7 +166,10 @@ async function runAzureSearch(config, query, options, context) {
 
 module.exports = async function (context, req) {
   const principal = getClientPrincipal(req);
-  if (!principal || !principal.userId) {
+  const searchConfig = getSearchConfig();
+  const isAISearch = !!searchConfig;
+  // If not AI search, require authentication
+  if ((!principal || !principal.userId) && !isAISearch) {
     context.res = { status: 401, headers: { 'Content-Type': 'application/json' }, body: { error: 'Unauthorized' } };
     return;
   }
@@ -171,8 +185,6 @@ module.exports = async function (context, req) {
   const shinyFilter = parseBoolean(req.query.shiny ?? req.body?.shiny);
   const topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
   const topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
-
-  const searchConfig = getSearchConfig();
 
   let collection;
   try {
@@ -249,10 +261,11 @@ module.exports = async function (context, req) {
   let usedAI = false;
   let results = [];
 
-  if (searchConfig) {
+  if (isAISearch) {
     try {
       const searchResults = await runAzureSearch(searchConfig, query, {
-        userId: principal.userId,
+        // Do not filter by userId for AI/global search
+        userId: undefined,
         regionFilter,
         caughtFilter,
         shinyFilter,
