@@ -216,30 +216,122 @@ async function getAllUsers() {
 }
 
 async function setUserRole(userId, role) {
-  const db = await connectToDatabase();
-  const result = await db.collection('users').updateOne(
-    { _id: userId },
-    { $set: { role } }
-  );
-  return { matched: result.matchedCount, modified: result.modifiedCount };
+  const graphToken = await getGraphToken();
+  const { spId, appRoleMap } = await getServicePrincipalRoleMap(graphToken);
+
+  // Find the Admin role ID
+  let adminRoleId = null;
+  for (const [roleId, roleName] of appRoleMap.entries()) {
+    if (roleName === 'Admin') {
+      adminRoleId = roleId;
+      break;
+    }
+  }
+
+  if (!adminRoleId) {
+    throw new Error('Admin app role not found in service principal');
+  }
+
+  if (role === 'admin') {
+    // Assign Admin role
+    const url = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`;
+    const assignment = {
+      principalId: userId,
+      resourceId: spId,
+      appRoleId: adminRoleId
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${graphToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(assignment)
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to assign Admin role: ${res.status} ${res.statusText} - ${text}`);
+    }
+
+    return { success: true, action: 'assigned', role: 'admin' };
+  } else {
+    // Remove Admin role - need to find existing assignment
+    const assignmentsUrl = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`;
+    const assignmentsRes = await fetch(assignmentsUrl, {
+      headers: { Authorization: `Bearer ${graphToken}` }
+    });
+
+    if (!assignmentsRes.ok) {
+      const text = await assignmentsRes.text();
+      throw new Error(`Failed to fetch app role assignments: ${assignmentsRes.status} ${assignmentsRes.statusText} - ${text}`);
+    }
+
+    const assignmentsData = await assignmentsRes.json();
+    const adminAssignment = assignmentsData.value.find(a => a.appRoleId === adminRoleId && a.resourceId === spId);
+
+    if (adminAssignment) {
+      const deleteUrl = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments/${adminAssignment.id}`;
+      const deleteRes = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${graphToken}` }
+      });
+
+      if (!deleteRes.ok) {
+        const text = await deleteRes.text();
+        throw new Error(`Failed to remove Admin role: ${deleteRes.status} ${deleteRes.statusText} - ${text}`);
+      }
+    }
+
+    return { success: true, action: 'removed', role: 'user' };
+  }
 }
 
 async function blockUser(userId) {
-  const db = await connectToDatabase();
-  const result = await db.collection('users').updateOne(
-    { _id: userId },
-    { $set: { blocked: true } }
-  );
-  return { matched: result.matchedCount, modified: result.modifiedCount };
+  const graphToken = await getGraphToken();
+  const url = `https://graph.microsoft.com/v1.0/users/${userId}`;
+
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${graphToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      accountEnabled: false
+    })
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to block user: ${res.status} ${res.statusText} - ${text}`);
+  }
+
+  return { success: true, action: 'blocked' };
 }
 
 async function unblockUser(userId) {
-  const db = await connectToDatabase();
-  const result = await db.collection('users').updateOne(
-    { _id: userId },
-    { $set: { blocked: false } }
-  );
-  return { matched: result.matchedCount, modified: result.modifiedCount };
+  const graphToken = await getGraphToken();
+  const url = `https://graph.microsoft.com/v1.0/users/${userId}`;
+
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${graphToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      accountEnabled: true
+    })
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to unblock user: ${res.status} ${res.statusText} - ${text}`);
+  }
+
+  return { success: true, action: 'unblocked' };
 }
 
 module.exports = {

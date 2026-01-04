@@ -133,9 +133,20 @@ module.exports = async function (context, req) {
                     id: u.id,
                     name: u.displayName || u.userPrincipalName || u.mail,
                     email: u.mail || u.userPrincipalName,
-                    isAdmin: false, // Optionally, fetch roles per user if needed
+                    isAdmin: false, // Will be determined by checking app roles for each user
                     blocked: u.accountEnabled === false
                 }));
+
+                // Check admin roles for each user
+                for (const user of users) {
+                    try {
+                        const roles = await getUserAppRoles(user.id);
+                        user.isAdmin = roles.includes('Admin');
+                    } catch (roleError) {
+                        context.log('useradmin: failed to get roles for user', user.id, roleError.message);
+                        user.isAdmin = false;
+                    }
+                }
                 context.log('useradmin: users found', users.length);
                 context.res = { status: 200, body: { users, rawGraph: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
                 return;
@@ -146,24 +157,132 @@ module.exports = async function (context, req) {
             }
         }
         if (action === 'promoteAdmin' && req.body && req.body.userId) {
-            const result = await setUserRole(req.body.userId, 'admin');
-            context.res = { status: 200, body: { result } };
-            return;
+            context.log('useradmin: promoteAdmin start', req.body);
+            try {
+                const db = await connectToDatabase();
+                const auditlogCollection = db.collection('auditlog');
+
+                const result = await setUserRole(req.body.userId, 'admin');
+
+                // Add audit log entry
+                try {
+                    const auditLog = {
+                        action: 'promoteAdmin',
+                        adminId: userId, // The admin who performed the action
+                        targetUserId: req.body.userId,
+                        details: `Promoted user ${req.body.userId} to admin role`
+                    };
+                    await auditlogCollection.insertOne({ ...auditLog, timestamp: new Date() });
+                    context.log('useradmin: promoteAdmin - audit log added');
+                } catch (auditError) {
+                    context.log.warn('useradmin: promoteAdmin - audit log error', auditError.message);
+                    // Don't fail the operation if audit logging fails
+                }
+
+                context.log('useradmin: promoteAdmin - success');
+                context.res = { status: 200, body: { result } };
+                return;
+            } catch (err) {
+                context.log('useradmin: promoteAdmin error', err && err.message);
+                context.res = { status: 500, body: { error: 'Failed to promote user to admin', details: err && err.message } };
+                return;
+            }
         }
         if (action === 'demoteAdmin' && req.body && req.body.userId) {
-            const result = await setUserRole(req.body.userId, 'user');
-            context.res = { status: 200, body: { result } };
-            return;
+            context.log('useradmin: demoteAdmin start', req.body);
+            try {
+                const db = await connectToDatabase();
+                const auditlogCollection = db.collection('auditlog');
+
+                const result = await setUserRole(req.body.userId, 'user');
+
+                // Add audit log entry
+                try {
+                    const auditLog = {
+                        action: 'demoteAdmin',
+                        adminId: userId, // The admin who performed the action
+                        targetUserId: req.body.userId,
+                        details: `Demoted user ${req.body.userId} from admin role`
+                    };
+                    await auditlogCollection.insertOne({ ...auditLog, timestamp: new Date() });
+                    context.log('useradmin: demoteAdmin - audit log added');
+                } catch (auditError) {
+                    context.log.warn('useradmin: demoteAdmin - audit log error', auditError.message);
+                    // Don't fail the operation if audit logging fails
+                }
+
+                context.log('useradmin: demoteAdmin - success');
+                context.res = { status: 200, body: { result } };
+                return;
+            } catch (err) {
+                context.log('useradmin: demoteAdmin error', err && err.message);
+                context.res = { status: 500, body: { error: 'Failed to demote user from admin', details: err && err.message } };
+                return;
+            }
         }
         if (action === 'blockUser' && req.body && req.body.userId) {
-            const result = await blockUser(req.body.userId);
-            context.res = { status: 200, body: { result } };
-            return;
+            context.log('useradmin: blockUser start', req.body);
+            try {
+                const db = await connectToDatabase();
+                const auditlogCollection = db.collection('auditlog');
+
+                const result = await blockUser(req.body.userId);
+
+                // Add audit log entry
+                try {
+                    const auditLog = {
+                        action: 'blockUser',
+                        adminId: userId, // The admin who performed the action
+                        targetUserId: req.body.userId,
+                        details: `Blocked user ${req.body.userId}`
+                    };
+                    await auditlogCollection.insertOne({ ...auditLog, timestamp: new Date() });
+                    context.log('useradmin: blockUser - audit log added');
+                } catch (auditError) {
+                    context.log.warn('useradmin: blockUser - audit log error', auditError.message);
+                    // Don't fail the operation if audit logging fails
+                }
+
+                context.log('useradmin: blockUser - success');
+                context.res = { status: 200, body: { result } };
+                return;
+            } catch (err) {
+                context.log('useradmin: blockUser error', err && err.message);
+                context.res = { status: 500, body: { error: 'Failed to block user', details: err && err.message } };
+                return;
+            }
         }
         if (action === 'unblockUser' && req.body && req.body.userId) {
-            const result = await unblockUser(req.body.userId);
-            context.res = { status: 200, body: { result } };
-            return;
+            context.log('useradmin: unblockUser start', req.body);
+            try {
+                const db = await connectToDatabase();
+                const auditlogCollection = db.collection('auditlog');
+
+                const result = await unblockUser(req.body.userId);
+
+                // Add audit log entry
+                try {
+                    const auditLog = {
+                        action: 'unblockUser',
+                        adminId: userId, // The admin who performed the action
+                        targetUserId: req.body.userId,
+                        details: `Unblocked user ${req.body.userId}`
+                    };
+                    await auditlogCollection.insertOne({ ...auditLog, timestamp: new Date() });
+                    context.log('useradmin: unblockUser - audit log added');
+                } catch (auditError) {
+                    context.log.warn('useradmin: unblockUser - audit log error', auditError.message);
+                    // Don't fail the operation if audit logging fails
+                }
+
+                context.log('useradmin: unblockUser - success');
+                context.res = { status: 200, body: { result } };
+                return;
+            } catch (err) {
+                context.log('useradmin: unblockUser error', err && err.message);
+                context.res = { status: 500, body: { error: 'Failed to unblock user', details: err && err.message } };
+                return;
+            }
         }
 
         // Content moderation actions
@@ -221,6 +340,7 @@ module.exports = async function (context, req) {
             try {
                 const db = await connectToDatabase();
                 const userdexCollection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+                const auditlogCollection = db.collection('auditlog');
 
                 // Find the document
                 const doc = await userdexCollection.findOne({
@@ -266,6 +386,23 @@ module.exports = async function (context, req) {
                     { userId: req.body.userId, pokemonId: parseInt(req.body.pokemonId) },
                     { $set: updateData }
                 );
+
+                // Add audit log entry
+                try {
+                    const auditLog = {
+                        action: 'deleteScreenshot',
+                        adminId: userId, // The admin who performed the action
+                        targetUserId: req.body.userId,
+                        pokemonId: req.body.pokemonId,
+                        screenshotType: req.body.shiny ? 'shiny' : 'regular',
+                        details: `Deleted ${req.body.shiny ? 'shiny' : 'regular'} screenshot for Pokemon ${req.body.pokemonId} from user ${req.body.userId}`
+                    };
+                    await auditlogCollection.insertOne({ ...auditLog, timestamp: new Date() });
+                    context.log('useradmin: deleteScreenshot - audit log added');
+                } catch (auditError) {
+                    context.log.warn('useradmin: deleteScreenshot - audit log error', auditError.message);
+                    // Don't fail the operation if audit logging fails
+                }
 
                 context.log('useradmin: deleteScreenshot - success');
                 context.res = { status: 200, body: { result, message: 'Screenshot deleted' } };
