@@ -23,7 +23,16 @@ module.exports = async function (context, req) {
 
         const action = req.query.action || (req.body && req.body.action);
         if (!action) {
-            context.res = { status: 400, body: { error: 'Missing action' } };
+            context.res = { 
+                status: 400, 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                },
+                body: { error: 'Missing action' } 
+            };
             return;
         }
 
@@ -83,7 +92,16 @@ module.exports = async function (context, req) {
             }
 
             context.log(`Returning ${media.length} media items`);
-            context.res = { status: 200, body: { media } };
+            context.res = { 
+                status: 200, 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                },
+                body: { media } 
+            };
             return;
         }
                     type: 'screenshot',
@@ -147,7 +165,16 @@ module.exports = async function (context, req) {
             );
 
             context.log('Screenshot deleted successfully');
-            context.res = { status: 200, body: { result, message: 'Screenshot deleted' } };
+            context.res = { 
+                status: 200, 
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                },
+                body: { result, message: 'Screenshot deleted' } 
+            };
             return;
         }
     if (action === 'removeMedia' && req.body && req.body.mediaId) {
@@ -155,7 +182,16 @@ module.exports = async function (context, req) {
             { _id: req.body.mediaId },
             { $set: { removed: true } }
         );
-        context.res = { status: 200, body: { result } };
+        context.res = { 
+            status: 200, 
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
+            body: { result } 
+        };
         return;
     }
     if (action === 'restoreMedia' && req.body && req.body.mediaId) {
@@ -163,7 +199,16 @@ module.exports = async function (context, req) {
             { _id: req.body.mediaId },
             { $set: { removed: false } }
         );
-        context.res = { status: 200, body: { result } };
+        context.res = { 
+            status: 200, 
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
+            body: { result } 
+        };
         return;
     }
 
@@ -171,6 +216,12 @@ module.exports = async function (context, req) {
         context.log.error('Error in content moderation function:', error);
         context.res = {
             status: 500,
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
             body: {
                 error: 'Internal server error',
                 message: error.message,
