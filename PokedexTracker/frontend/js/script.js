@@ -207,9 +207,9 @@ function setupAdminDashboardTabs() {
             });
             if (!res.ok) throw new Error('Failed to update user');
 
-            // Poll until the user's status actually changes, or timeout after 15s
-            const pollInterval = 1200;
-            const timeout = 15000;
+            // Poll until the user's status actually changes, or timeout after 30s
+            const pollInterval = 1000;
+            const timeout = 30000;
             const start = Date.now();
             let lastStatus = null;
             let changed = false;
@@ -227,7 +227,11 @@ function setupAdminDashboardTabs() {
                 lastStatus = { isAdmin: user.isAdmin, blocked: user.blocked };
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
             }
-            await loadAdminUsers();
+            if (changed) {
+                await loadAdminUsers();
+            } else {
+                panel.innerHTML = '<div class="empty-state">Update may have failed or is taking longer. Please refresh.</div>';
+            }
         } catch (err) {
             panel.innerHTML = '<div class="empty-state">Failed to update user.</div>';
         }
