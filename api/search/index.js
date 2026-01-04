@@ -128,7 +128,7 @@ async function runAzureSearch(config, query, options, context) {
     top: options.topK,
     queryType: 'simple',
     searchMode: 'all',
-    select: 'pokemonId,name,types,region,caught,shiny,notes,screenshot,sprite,spriteShiny,userId'
+    select: 'id,pokemonId,name,types,region,sprite,spriteShiny'
   };
 
   const res = await fetch(url, {
