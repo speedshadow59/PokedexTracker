@@ -188,7 +188,7 @@ module.exports = async function (context, req) {
     try {
       const db = await connectToDatabase();
       const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-      const cursor = collection.find({ userId: userId });
+      const cursor = collection.find({ userId: userId }, { projection: { pokemonId: 1, caught: 1, shiny: 1, notes: 1, screenshot: 1, updatedAt: 1, createdAt: 1 } });
       const items = await cursor.toArray();
 
       context.res = {
