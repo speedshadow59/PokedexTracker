@@ -215,6 +215,7 @@ async function getAllUsers() {
   return users;
 }
 
+// Fixed demote admin error - now uses user-specific appRoleAssignments endpoint
 async function setUserRole(userId, role) {
   const graphToken = await getGraphToken();
   const { spId, appRoleMap } = await getServicePrincipalRoleMap(graphToken);
