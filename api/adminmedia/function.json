@@ -5,6 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
+      "route": "admin/media/{action}",
       "methods": ["get", "post"]
     },
     {

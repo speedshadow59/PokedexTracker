@@ -1,5 +1,5 @@
-// Admin endpoints: content moderation (list media, remove/restore)
-const { connectToDatabase } = require('../shared/utils');
+// Admin endpoints: basic media management (list all user media, delete any media)
+const { getBlobServiceClient, generateBlobSasUrl } = require('../shared/utils');
 const checkAdmin = require('../checkadmin');
 
 module.exports = async function (context, req) {
@@ -10,36 +10,115 @@ module.exports = async function (context, req) {
         return;
     }
 
-    const action = req.query.action || (req.body && req.body.action);
+    const action = req.params.action || req.query.action || (req.body && req.body.action);
     if (!action) {
         context.res = { status: 400, body: { error: 'Missing action' } };
         return;
     }
 
-    const db = await connectToDatabase();
+    try {
+        const blobServiceClient = getBlobServiceClient();
+        const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
+        const containerClient = blobServiceClient.getContainerClient(containerName);
 
-    // Content moderation actions
-    if (action === 'listMedia') {
-        const media = await db.collection('media').find({}).toArray();
-        context.res = { status: 200, body: { media } };
-        return;
-    }
-    if (action === 'removeMedia' && req.body && req.body.mediaId) {
-        const result = await db.collection('media').updateOne(
-            { _id: req.body.mediaId },
-            { $set: { removed: true } }
-        );
-        context.res = { status: 200, body: { result } };
-        return;
-    }
-    if (action === 'restoreMedia' && req.body && req.body.mediaId) {
-        const result = await db.collection('media').updateOne(
-            { _id: req.body.mediaId },
-            { $set: { removed: false } }
-        );
-        context.res = { status: 200, body: { result } };
-        return;
-    }
+        // List all media (blobs) in the container
+        if (action === 'listMedia') {
+            const blobs = [];
+            for await (const blob of containerClient.listBlobsFlat()) {
+                // Parse blob name to extract userId, pokemonId, filename
+                const parts = blob.name.split('/');
+                if (parts.length >= 3) {
+                    const userId = parts[0];
+                    const pokemonId = parseInt(parts[1]);
+                    const filename = parts.slice(2).join('/');
 
-    context.res = { status: 400, body: { error: 'Invalid action or missing parameters' } };
+                    // Generate SAS URL for viewing
+                    const blobClient = containerClient.getBlockBlobClient(blob.name);
+                    const sasUrl = generateBlobSasUrl(blobClient.url);
+
+                    blobs.push({
+                        blobName: blob.name,
+                        userId: userId,
+                        pokemonId: pokemonId,
+                        filename: filename,
+                        url: sasUrl,
+                        size: blob.properties.contentLength,
+                        lastModified: blob.properties.lastModified,
+                        contentType: blob.properties.contentType
+                    });
+                }
+            }
+
+            context.res = {
+                status: 200,
+                body: {
+                    success: true,
+                    media: blobs,
+                    count: blobs.length
+                }
+            };
+            return;
+        }
+
+        // Delete specific media by blob name
+        if (action === 'deleteMedia' && req.body && req.body.blobName) {
+            const blobName = req.body.blobName;
+            const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+            const deleteResponse = await blockBlobClient.deleteIfExists();
+
+            if (deleteResponse.succeeded) {
+                // Extract pokemonId from blob name for database cleanup
+                const parts = blobName.split('/');
+                const userId = parts[0];
+                const pokemonId = parts.length >= 2 ? parseInt(parts[1]) : null;
+
+                // Update userdex to remove screenshot reference if pokemonId is available
+                if (pokemonId) {
+                    const { connectToDatabase } = require('../shared/utils');
+                    const db = await connectToDatabase();
+                    const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+
+                    await collection.updateOne(
+                        { userId: userId, pokemonId: pokemonId },
+                        { $unset: { screenshot: "" } }
+                    );
+                }
+
+                context.res = {
+                    status: 200,
+                    body: {
+                        success: true,
+                        message: 'Media deleted successfully',
+                        blobName: blobName
+                    }
+                };
+            } else {
+                context.res = {
+                    status: 404,
+                    body: {
+                        error: 'Media not found'
+                    }
+                };
+            }
+            return;
+        }
+
+        context.res = {
+            status: 400,
+            body: {
+                error: 'Invalid action or missing parameters'
+            }
+        };
+
+    } catch (error) {
+        context.log.error('Admin media error:', error);
+        context.res = {
+            status: 500,
+            body: {
+                error: 'Internal server error',
+                message: error.message
+            }
+        };
+    }
 };
