@@ -258,9 +258,8 @@ module.exports = async function (context, req) {
           
           // Extract blob name from URL (format: https://<account>.blob.core.windows.net/<container>/<blobName>)
           const blobUrl = existingDoc.screenshot;
-          // Extract everything after the container name (includes userId/pokemonId/filename.png)
-          const urlParts = blobUrl.split(`/${containerName}/`);
-          const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+          const url = new URL(blobUrl);
+          const blobName = url.pathname.split(`/${containerName}/`)[1].split('?')[0]; // Remove SAS parameters
           
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
           await blockBlobClient.deleteIfExists();
@@ -279,8 +278,8 @@ module.exports = async function (context, req) {
           const containerClient = blobServiceClient.getContainerClient(containerName);
           
           const blobUrl = existingDoc.screenshotShiny;
-          const urlParts = blobUrl.split(`/${containerName}/`);
-          const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+          const url = new URL(blobUrl);
+          const blobName = url.pathname.split(`/${containerName}/`)[1].split('?')[0]; // Remove SAS parameters
           
           const blockBlobClient = containerClient.getBlockBlobClient(blobName);
           await blockBlobClient.deleteIfExists();
@@ -411,8 +410,8 @@ module.exports = async function (context, req) {
                 const containerClient = blobServiceClient.getContainerClient(containerName);
                 
                 const blobUrl = existingEntry.screenshot;
-                const urlParts = blobUrl.split(`/${containerName}/`);
-                const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+                const url = new URL(blobUrl);
+                const blobName = url.pathname.split(`/${containerName}/`)[1].split('?')[0]; // Remove SAS parameters
                 
                 const blockBlobClient = containerClient.getBlockBlobClient(blobName);
                 await blockBlobClient.deleteIfExists();
@@ -443,8 +442,8 @@ module.exports = async function (context, req) {
                 const containerClient = blobServiceClient.getContainerClient(containerName);
                 
                 const blobUrl = existingEntry.screenshotShiny;
-                const urlParts = blobUrl.split(`/${containerName}/`);
-                const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+                const url = new URL(blobUrl);
+                const blobName = url.pathname.split(`/${containerName}/`)[1].split('?')[0]; // Remove SAS parameters
                 
                 const blockBlobClient = containerClient.getBlockBlobClient(blobName);
                 await blockBlobClient.deleteIfExists();
