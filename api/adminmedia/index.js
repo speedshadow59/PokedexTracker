@@ -3,23 +3,22 @@ const { connectToDatabase, getBlobServiceClient } = require('../shared/utils');
 const checkAdmin = require('../checkadmin');
 
 module.exports = async function (context, req) {
-    try {
-        console.log('=== CONTENT MODERATION FUNCTION STARTED ===');
-        console.log('Request method:', req.method);
-        console.log('Request query:', JSON.stringify(req.query));
-        console.log('Request body:', JSON.stringify(req.body));
-
-        context.log('Content moderation function called with action:', req.query?.action || req.body?.action);
-
-        // TEMPORARILY BYPASS ADMIN CHECK FOR DEBUGGING
-        // const adminCheck = await checkAdmin(context, req);
-        // if (!adminCheck.isAdmin) {
-        //     context.log('Admin check failed:', adminCheck);
-        //     context.res = { status: 403, body: { error: 'Admin access required' } };
-        //     return;
-        // }
-        console.log('Admin check bypassed for debugging');
-        context.log('Admin check bypassed for debugging');
+    // IMMEDIATE TEST RESPONSE
+    context.res = { 
+        status: 200, 
+        headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        },
+        body: { 
+            test: 'Function is working',
+            action: req.query?.action || req.body?.action,
+            timestamp: new Date().toISOString()
+        } 
+    };
+    return;
 
         const action = req.query.action || (req.body && req.body.action);
         if (!action) {
