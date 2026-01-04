@@ -65,6 +65,11 @@ async function loadUserCaughtData() {
             }
             
             saveCaughtData(mergedData);
+            // Re-render grid if not in search mode
+            if (!currentSearchResults) {
+                renderPokemonGrid();
+                updateProgress();
+            }
         }
     } catch (error) {
         console.log('Could not load user data from backend, using local storage:', error);
@@ -84,6 +89,18 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(checkBackendStatus, 60000);
     fetchAndApplyCurrentUser();
     checkAdminAndShowDashboard();
+    // Sync user data periodically
+    setInterval(() => {
+        if (isAuthenticated()) {
+            loadUserCaughtData();
+        }
+    }, 30000); // Sync every 30 seconds
+    // Sync when page becomes visible
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && isAuthenticated()) {
+            loadUserCaughtData();
+        }
+    });
     // Admin Dashboard button click handler
     const adminBtn = document.getElementById('adminDashboardBtn');
     if (adminBtn) {
@@ -1174,10 +1191,43 @@ function createPokemonCard(pokemon, caughtInfo) {
     return card;
 }
 
-function openPokemonModal(pokemon) {
+async function openPokemonModal(pokemon) {
     selectedPokemon = pokemon;
-    const caughtData = getCaughtData();
-    const caughtInfo = caughtData[pokemon.id] || {};
+    let caughtInfo = getCaughtData()[pokemon.id] || {};
+    
+    // If authenticated, fetch latest data for this Pokemon from backend
+    if (isAuthenticated()) {
+        try {
+            const userId = getUserId();
+            const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex?userId=${userId}&pokemonId=${pokemon.id}`);
+            console.log('Modal fetch response:', response.status, response.ok);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Modal fetch data:', data);
+                if (data.pokemon && data.pokemon.length > 0) {
+                    const backendData = data.pokemon[0];
+                    caughtInfo = {
+                        caught: backendData.caught,
+                        shiny: backendData.shiny || false,
+                        notes: backendData.notes || '',
+                        screenshot: backendData.screenshot || null,
+                        timestamp: backendData.updatedAt ? new Date(backendData.updatedAt).getTime() : Date.now()
+                    };
+                    // Update local storage with fresh data
+                    const allData = getCaughtData();
+                    allData[pokemon.id] = caughtInfo;
+                    saveCaughtData(allData);
+                    // Re-render grid if not in search mode
+                    if (!currentSearchResults) {
+                        renderPokemonGrid();
+                        updateProgress();
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('Could not fetch latest Pokemon data, using local data:', error);
+        }
+    }
     
     // Update modal content
     const modal = document.getElementById('pokemonModal');
@@ -1221,7 +1271,7 @@ function openPokemonModal(pokemon) {
     
     // Show/hide uncatch button
     const uncatchBtn = document.getElementById('uncatchBtn');
-    uncatchBtn.style.display = caughtData[pokemon.id] ? 'block' : 'none';
+    uncatchBtn.style.display = caughtInfo.caught ? 'block' : 'none';
 
     applyModalAuthState();
     
