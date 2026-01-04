@@ -37,7 +37,7 @@ module.exports = async function (context, req) {
     const userId = principal.userId;
     try {
       const db = await connectToDatabase();
-      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const collection = db.collection('userdex');
       // Check if user already has a shareId
       const existingEntry = await collection.findOne({ userId: userId, shareId: { $exists: true, $ne: null } });
       let shareId = existingEntry && existingEntry.shareId ? existingEntry.shareId : uuidv4();
@@ -75,7 +75,7 @@ module.exports = async function (context, req) {
     const userId = principal.userId;
     try {
       const db = await connectToDatabase();
-      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const collection = db.collection('userdex');
       const result = await collection.updateMany(
         { userId: userId },
         { $unset: { shareId: "" } }
@@ -110,7 +110,7 @@ module.exports = async function (context, req) {
     }
     try {
       const db = await connectToDatabase();
-      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const collection = db.collection('userdex');
       const items = await collection.find({ shareId }).toArray();
       if (!items.length) {
         context.res = {
@@ -187,7 +187,7 @@ module.exports = async function (context, req) {
 
     try {
       const db = await connectToDatabase();
-      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const collection = db.collection('userdex');
       const cursor = collection.find({ userId: userId }, { projection: { pokemonId: 1, caught: 1, shiny: 1, notes: 1, screenshot: 1, updatedAt: 1, createdAt: 1 } });
       const items = await cursor.toArray();
 
@@ -241,7 +241,7 @@ module.exports = async function (context, req) {
     try {
       // Connect to Cosmos DB
       const db = await connectToDatabase();
-      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const collection = db.collection('userdex');
 
       // First, fetch the document to get the screenshot URL
       const existingDoc = await collection.findOne({
@@ -369,7 +369,7 @@ module.exports = async function (context, req) {
   try {
     // Connect to Cosmos DB
     const db = await connectToDatabase();
-    const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+    const collection = db.collection('userdex');
 
     // Check if entry exists
     const existingEntry = await collection.findOne({
