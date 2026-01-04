@@ -1841,7 +1841,7 @@ async function showProfileModal() {
     const content = document.getElementById('profileContent');
     const closeBtn = document.getElementById('profileCloseBtn');
 
-    modal.style.display = 'block';
+    modal.classList.add('show');
     content.innerHTML = '<div class="loading">Loading profile...</div>';
 
     console.log('showProfileModal: currentUserPrincipal', currentUserPrincipal);
@@ -1892,13 +1892,13 @@ async function showProfileModal() {
 
     // Close modal when clicking the close button
     closeBtn.onclick = () => {
-        modal.style.display = 'none';
+        modal.classList.remove('show');
     };
 
     // Close modal when clicking outside
     window.onclick = (event) => {
         if (event.target === modal) {
-            modal.style.display = 'none';
+            modal.classList.remove('show');
         }
     };
 }
