@@ -19,7 +19,7 @@ function keywordScore(text, query) {
   if (!text || !query) return 0;
   const haystack = text.toLowerCase();
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return terms.reduce((score, term) => score + (new RegExp(`\\b${term}\\b`, 'i').test(haystack) ? 1 : 0), 0);
+  return terms.reduce((score, term) => score + (haystack.includes(term) ? 1 : 0), 0);
 }
 
 function inferRegionFromDex(pokemonId) {
