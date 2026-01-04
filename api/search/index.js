@@ -220,14 +220,17 @@ module.exports = async function (context, req) {
         return;
       }
 
+      const debugFilterInfo = [];
       for (const doc of documents) {
         const meta = await getPokemonMeta(doc.pokemonId);
         if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
           continue;
         }
+        let caughtCompare = true;
         if (caughtFilter !== undefined) {
-          context.log(`[DEBUG] Filtering: doc.pokemonId=${doc.pokemonId}, doc.caught=${doc.caught}, caughtFilter=${caughtFilter}, compare=${Boolean(doc.caught) === Boolean(caughtFilter)}`);
-          if (Boolean(doc.caught) !== Boolean(caughtFilter)) {
+          caughtCompare = Boolean(doc.caught) === Boolean(caughtFilter);
+          debugFilterInfo.push({ pokemonId: doc.pokemonId, docCaught: doc.caught, caughtFilter, compare: caughtCompare });
+          if (!caughtCompare) {
             continue;
           }
         }
@@ -260,7 +263,7 @@ module.exports = async function (context, req) {
         context.res = {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
-          body: { query, count: 0, usedAI: false, results: [], message: 'No items matched the provided filters.' }
+          body: { query, count: 0, usedAI: false, results: [], message: 'No items matched the provided filters.', debug: debugFilterInfo }
         };
         return;
       }
