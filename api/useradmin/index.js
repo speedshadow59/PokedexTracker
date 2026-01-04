@@ -263,6 +263,14 @@ module.exports = async function (context, req) {
                 
                 // Get Pokemon statistics for this user
                 let pokemonStats = {};
+                let debugData = {
+                    requestedUserId: req.body.userId,
+                    resolvedUserId: userData.id,
+                    pokemonQuery: { userId: userData.id, caught: true },
+                    totalDocsInCollection: 0,
+                    docsForUser: []
+                };
+                
                 try {
                     const db = await connectToDatabase();
                     const userdexCollection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
@@ -290,6 +298,9 @@ module.exports = async function (context, req) {
                     if (anyUserDocs.length > 0) {
                         context.log('useradmin: sample user document:', anyUserDocs[0]);
                     }
+                    
+                    debugData.totalDocsInCollection = totalDocs;
+                    debugData.docsForUser = anyUserDocs;
                     
                     const totalCaught = userPokemon.length;
                     const shinyCaught = userPokemon.filter(p => p.shiny).length;
@@ -343,13 +354,7 @@ module.exports = async function (context, req) {
                     body: { 
                         user, 
                         rawGraph: userData,
-                        debug: {
-                            requestedUserId: req.body.userId,
-                            resolvedUserId: userData.id,
-                            pokemonQuery: { userId: userData.id, caught: true },
-                            totalDocsInCollection: await userdexCollection.countDocuments(),
-                            docsForUser: await userdexCollection.find({ userId: userData.id }).limit(3).toArray()
-                        }
+                        debug: debugData
                     } 
                 };
                 return;
