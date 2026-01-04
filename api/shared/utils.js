@@ -296,8 +296,8 @@ async function setUserRole(userId, role) {
 
     // Remove all Admin assignments
     for (const adminAssignment of adminAssignments) {
-      // Use the service principal endpoint to delete the assignment
-      const deleteUrl = `https://graph.microsoft.com/v1.0/servicePrincipals/${spId}/appRoleAssignments/${adminAssignment.id}`;
+      // Use the user's app role assignments endpoint (this was the working approach)
+      const deleteUrl = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments/${adminAssignment.id}`;
       console.log(`[DEMOTE DEBUG] Deleting assignment at: ${deleteUrl}`);
       const deleteRes = await fetch(deleteUrl, {
         method: 'DELETE',
