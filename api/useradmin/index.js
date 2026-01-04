@@ -220,7 +220,15 @@ module.exports = async function (context, req) {
                 const userData = await res.json();
                 context.log(`useradmin: getUser raw data - accountEnabled: ${userData.accountEnabled} (type: ${typeof userData.accountEnabled})`);
                 context.log(`useradmin: getUser object keys: ${Object.keys(userData).join(', ')}`);
-                const roles = await getUserAppRoles(req.body.userId);
+                
+                let roles = [];
+                try {
+                    roles = await getUserAppRoles(req.body.userId);
+                } catch (roleErr) {
+                    context.log('useradmin: getUserAppRoles failed, assuming no admin roles', roleErr.message);
+                    roles = []; // Assume no admin roles if we can't check
+                }
+                
                 const accountEnabled = userData.accountEnabled;
                 const blocked = accountEnabled === false || accountEnabled === null || accountEnabled === undefined;
                 const user = {

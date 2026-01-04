@@ -1825,20 +1825,30 @@ async function showProfileModal() {
     modal.style.display = 'block';
     content.innerHTML = '<div class="loading">Loading profile...</div>';
 
+    console.log('showProfileModal: currentUserPrincipal', currentUserPrincipal);
+
     try {
         // Fetch user profile data from Microsoft Graph
+        const requestBody = { userId: currentUserPrincipal.userId, action: 'getUser' };
+        console.log('showProfileModal: sending request', requestBody);
+
         const response = await fetch('/api/useradmin?action=getUser', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ userId: currentUserPrincipal.userId, action: 'getUser' })
+            body: JSON.stringify(requestBody)
         });
 
+        console.log('showProfileModal: response status', response.status);
+
         if (!response.ok) {
-            throw new Error('Failed to load profile data');
+            const errorText = await response.text();
+            console.error('showProfileModal: response error', errorText);
+            throw new Error(`Failed to load profile data: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
+        console.log('showProfileModal: response data', data);
         const user = data.user;
 
         if (!user) {
@@ -1854,8 +1864,8 @@ async function showProfileModal() {
             <div class="profile-info"><strong>Admin Role:</strong> <span>${user.isAdmin ? 'Yes' : 'No'}</span></div>
         `;
     } catch (error) {
-        content.innerHTML = '<div class="error-message">Failed to load profile data. Please try again.</div>';
         console.error('Profile load error:', error);
+        content.innerHTML = '<div class="error-message">Failed to load profile data. Please try again.</div>';
     }
 
     // Close modal when clicking the close button
