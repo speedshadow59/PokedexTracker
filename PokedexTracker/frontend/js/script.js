@@ -1547,6 +1547,23 @@ async function savePokemonData() {
     const notes = document.getElementById('catchNotes').value.trim();
     const screenshotFile = document.getElementById('screenshotUpload').files[0];
     
+    // Check screenshot file size (warn if over 2MB, block if over 5MB)
+    if (screenshotFile) {
+        const maxRecommendedSize = 2 * 1024 * 1024; // 2MB
+        const maxAllowedSize = 5 * 1024 * 1024; // 5MB
+        
+        if (screenshotFile.size > maxAllowedSize) {
+            showToast(`Screenshot is too large (${(screenshotFile.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed size is 5MB.`, 'error');
+            return;
+        }
+        
+        if (screenshotFile.size > maxRecommendedSize) {
+            if (!confirm(`Screenshot is ${(screenshotFile.size / (1024 * 1024)).toFixed(1)}MB. Large files may cause storage issues. Continue?`)) {
+                return;
+            }
+        }
+    }
+    
     // Get current data
     const caughtData = getCaughtData();
     
