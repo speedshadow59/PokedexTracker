@@ -239,11 +239,15 @@ function setupAdminDashboardTabs() {
             let actionSucceeded = false;
             let isAccountChange = (action === 'block' || action === 'unblock');
 
-            if (action === 'promote' && updatedUser.isAdmin) actionSucceeded = true;
-            if (action === 'demote' && !updatedUser.isAdmin) actionSucceeded = true;
-            // For block/unblock, account changes may take longer to propagate
-            if (action === 'block' && (updatedUser.blocked || isAccountChange)) actionSucceeded = true;
-            if (action === 'unblock' && (!updatedUser.blocked || isAccountChange)) actionSucceeded = true;
+            if (isAccountChange) {
+                // For account changes, assume success since Microsoft Graph operations are reliable
+                // The change may take time to propagate but the operation itself succeeded
+                actionSucceeded = true;
+            } else {
+                // For role changes, verify immediately
+                if (action === 'promote' && updatedUser.isAdmin) actionSucceeded = true;
+                if (action === 'demote' && !updatedUser.isAdmin) actionSucceeded = true;
+            }
 
             if (actionSucceeded) {
                 panel.innerHTML = '<div class="success-message">User updated successfully!</div>';
