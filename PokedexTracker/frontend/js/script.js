@@ -739,14 +739,7 @@ async function runAISearch(searchTerm) {
         return;
     }
 
-    if (!isAuthenticated()) {
-        showToast('Sign in to use AI search.', 'warning');
-        updateAISearchStatus('Login required for AI search');
-        currentSearchResults = null;
-        renderPokemonGrid();
-        updateProgress();
-        return;
-    }
+    // No authentication required for AI search
 
     updateAISearchStatus('Searching...');
 
