@@ -47,62 +47,25 @@ module.exports = async function (context, req) {
     }
 
     try {
-      // Get Blob Service Client
-      context.log('Getting blob service client...');
-      const blobServiceClient = getBlobServiceClient();
-      const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
-      context.log(`Container name: ${containerName}`);
-      
-      // Get container client (create container if it doesn't exist)
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      
-      context.log('Creating container if not exists...');
-      try {
-        await containerClient.createIfNotExists();
-        context.log('Container created or already exists');
-      } catch (error) {
-        context.log('Container may already exist or error creating:', error.message);
-      }
-
-      // Generate unique blob name
-      const fileExtension = fileName ? fileName.split('.').pop() : 'png';
-      const blobName = `${userId}/${pokemonId}/${uuidv4()}.${fileExtension}`;
-      context.log(`Generated blob name: ${blobName}`);
-      
-      // Get blob client
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-      // Convert base64 to buffer if needed
-      context.log('Converting file to buffer...');
-      let buffer;
+      // Process the base64 image data
+      context.log('Processing image data...');
+      let dataUrl;
       if (typeof file === 'string') {
-        // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-        const base64Data = file.replace(/^data:image\/\w+;base64,/, '');
-        buffer = Buffer.from(base64Data, 'base64');
-        context.log(`Buffer created from base64 string, length: ${buffer.length}`);
-      } else if (Buffer.isBuffer(file)) {
-        buffer = file;
-        context.log(`Using provided buffer, length: ${buffer.length}`);
+        // Ensure it has the data URL prefix
+        if (file.startsWith('data:')) {
+          dataUrl = file;
+        } else {
+          // Assume it's base64 without prefix, add default
+          dataUrl = `data:${contentType || 'image/png'};base64,${file}`;
+        }
+        context.log(`Data URL created, length: ${dataUrl.length}`);
       } else {
-        throw new Error('Invalid file format. Expected base64 string or Buffer');
+        throw new Error('Invalid file format. Expected base64 string');
       }
 
-      // Upload to blob storage
-      context.log('Uploading to blob storage...');
-      const uploadOptions = {
-        blobHTTPHeaders: {
-          blobContentType: contentType || 'image/png'
-        }
-      };
-
-      await blockBlobClient.upload(buffer, buffer.length, uploadOptions);
-      context.log('Upload successful');
-
-      // Get the URL of the uploaded blob with SAS token for private access
-      const blobUrl = blockBlobClient.url;
-      context.log(`Blob URL: ${blobUrl}`);
-      const sasUrl = generateBlobSasUrl(blobUrl);
-      context.log(`SAS URL generated: ${!!sasUrl}`);
+      // Generate a unique identifier for the image
+      const imageId = uuidv4();
+      context.log(`Generated image ID: ${imageId}`);
 
       // Emit Event Grid event
       context.log('Emitting event...');
@@ -112,9 +75,9 @@ module.exports = async function (context, req) {
         {
           userId: userId,
           pokemonId: parseInt(pokemonId),
-          blobName: blobName,
-          blobUrl: sasUrl || blobUrl, // Use SAS URL for accessible URL
-          fileSize: buffer.length,
+          imageId: imageId,
+          dataUrl: dataUrl,
+          fileSize: dataUrl.length,
           contentType: contentType || 'image/png',
           timestamp: new Date()
         }
@@ -126,15 +89,15 @@ module.exports = async function (context, req) {
         headers: { 'Content-Type': 'application/json' },
         body: {
           success: true,
-          message: 'File uploaded successfully',
-          url: sasUrl || blobUrl, // Use SAS URL if available, fallback to direct URL
-          blobName: blobName,
+          message: 'Image processed successfully',
+          url: dataUrl,
+          imageId: imageId,
           pokemonId: parseInt(pokemonId)
         }
       };
 
     } catch (error) {
-      context.log.error('Error uploading file:', error);
+      context.log.error('Error processing image:', error);
       
       context.res = {
         status: 500,
@@ -173,42 +136,9 @@ module.exports = async function (context, req) {
     }
 
     try {
-      // Get Blob Service Client
-      const blobServiceClient = getBlobServiceClient();
-      const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
-      const containerClient = blobServiceClient.getContainerClient(containerName);
-      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-      // Delete the blob
-      const deleteResponse = await blockBlobClient.deleteIfExists();
-      
-      if (!deleteResponse.succeeded) {
-        context.res = {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-          body: {
-            error: 'Screenshot not found'
-          }
-        };
-        return;
-      }
-
-      // Extract pokemonId from blob name (format: userId/pokemonId/uuid.ext)
-      const parts = blobName.split('/');
-      const pokemonId = parts.length >= 2 ? parseInt(parts[1]) : null;
-
-      // Update userdex to remove screenshot reference if pokemonId is available
-      if (pokemonId) {
-        const { connectToDatabase } = require('../shared/utils');
-        const db = await connectToDatabase();
-        const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-        
-        // Remove screenshot reference from the pokemon entry
-        await collection.updateOne(
-          { userId: userId, pokemonId: pokemonId },
-          { $unset: { screenshot: "" } }
-        );
-      }
+      // Since images are stored in the database, deletion is handled by removing the Pokemon entry
+      // Extract pokemonId from the request (assuming it's passed as a parameter)
+      const pokemonId = req.query.pokemonId ? parseInt(req.query.pokemonId) : null;
 
       // Emit Event Grid event
       await emitEvent(
@@ -217,7 +147,6 @@ module.exports = async function (context, req) {
         {
           userId: userId,
           pokemonId: pokemonId,
-          blobName: blobName,
           timestamp: new Date()
         }
       );
@@ -227,14 +156,13 @@ module.exports = async function (context, req) {
         headers: { 'Content-Type': 'application/json' },
         body: {
           success: true,
-          message: 'Screenshot deleted successfully',
-          blobName: blobName,
+          message: 'Screenshot deletion processed',
           pokemonId: pokemonId
         }
       };
 
     } catch (error) {
-      context.log.error('Error deleting screenshot:', error);
+      context.log.error('Error processing screenshot deletion:', error);
       
       context.res = {
         status: 500,

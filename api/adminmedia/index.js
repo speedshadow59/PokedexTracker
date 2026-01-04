@@ -1,5 +1,5 @@
 // Admin endpoints: basic media management (list all user media, delete any media)
-const { getBlobServiceClient, generateBlobSasUrl } = require('../shared/utils');
+const { connectToDatabase } = require('../shared/utils');
 const checkAdmin = require('../checkadmin');
 
 module.exports = async function (context, req) {
@@ -17,80 +17,55 @@ module.exports = async function (context, req) {
     }
 
     try {
-        const blobServiceClient = getBlobServiceClient();
-        const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
-        const containerClient = blobServiceClient.getContainerClient(containerName);
+        const db = await connectToDatabase();
+        const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
 
-        // List all media (blobs) in the container
+        // List all media (screenshots) from database
         if (action === 'listMedia') {
-            const blobs = [];
-            for await (const blob of containerClient.listBlobsFlat()) {
-                // Parse blob name to extract userId, pokemonId, filename
-                const parts = blob.name.split('/');
-                if (parts.length >= 3) {
-                    const userId = parts[0];
-                    const pokemonId = parseInt(parts[1]);
-                    const filename = parts.slice(2).join('/');
+            const media = [];
+            const cursor = collection.find({ screenshot: { $exists: true, $ne: null } }, {
+                projection: { userId: 1, pokemonId: 1, screenshot: 1, updatedAt: 1 }
+            });
+            const items = await cursor.toArray();
 
-                    // Generate SAS URL for viewing
-                    const blobClient = containerClient.getBlockBlobClient(blob.name);
-                    const sasUrl = generateBlobSasUrl(blobClient.url);
-
-                    blobs.push({
-                        blobName: blob.name,
-                        userId: userId,
-                        pokemonId: pokemonId,
-                        filename: filename,
-                        url: sasUrl,
-                        size: blob.properties.contentLength,
-                        lastModified: blob.properties.lastModified,
-                        contentType: blob.properties.contentType
-                    });
-                }
+            for (const item of items) {
+                media.push({
+                    userId: item.userId,
+                    pokemonId: item.pokemonId,
+                    url: item.screenshot,
+                    lastModified: item.updatedAt,
+                    contentType: 'image' // Assuming all are images
+                });
             }
 
             context.res = {
                 status: 200,
                 body: {
                     success: true,
-                    media: blobs,
-                    count: blobs.length
+                    media: media,
+                    count: media.length
                 }
             };
             return;
         }
 
-        // Delete specific media by blob name
-        if (action === 'deleteMedia' && req.body && req.body.blobName) {
-            const blobName = req.body.blobName;
-            const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        // Delete specific media by userId and pokemonId
+        if (action === 'deleteMedia' && req.body && req.body.userId && req.body.pokemonId) {
+            const { userId, pokemonId } = req.body;
 
-            const deleteResponse = await blockBlobClient.deleteIfExists();
+            const result = await collection.updateOne(
+                { userId: userId, pokemonId: parseInt(pokemonId) },
+                { $unset: { screenshot: "" } }
+            );
 
-            if (deleteResponse.succeeded) {
-                // Extract pokemonId from blob name for database cleanup
-                const parts = blobName.split('/');
-                const userId = parts[0];
-                const pokemonId = parts.length >= 2 ? parseInt(parts[1]) : null;
-
-                // Update userdex to remove screenshot reference if pokemonId is available
-                if (pokemonId) {
-                    const { connectToDatabase } = require('../shared/utils');
-                    const db = await connectToDatabase();
-                    const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-
-                    await collection.updateOne(
-                        { userId: userId, pokemonId: pokemonId },
-                        { $unset: { screenshot: "" } }
-                    );
-                }
-
+            if (result.modifiedCount > 0) {
                 context.res = {
                     status: 200,
                     body: {
                         success: true,
                         message: 'Media deleted successfully',
-                        blobName: blobName
+                        userId: userId,
+                        pokemonId: pokemonId
                     }
                 };
             } else {
