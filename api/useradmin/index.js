@@ -512,7 +512,7 @@ module.exports = async function (context, req) {
                 
                 // Pagination parameters
                 const page = parseInt(req.query.page) || 1;
-                const pageSize = parseInt(req.query.pageSize) || 20;
+                const pageSize = parseInt(req.query.pageSize) || 5;
                 const totalLogs = allLogs.length;
                 const totalPages = Math.ceil(totalLogs / pageSize);
                 const startIndex = (page - 1) * pageSize;
