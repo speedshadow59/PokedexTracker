@@ -127,7 +127,24 @@ module.exports = async function (context, req) {
           shareId,
           count: items.length,
           pokemon: items.map(i => {
-            // Images are stored as data URLs in the database
+            // Generate SAS URLs for screenshots with error handling
+            let screenshotUrl = null;
+            let screenshotShinyUrl = null;
+            
+            if (i.screenshot) {
+              screenshotUrl = generateBlobSasUrl(i.screenshot, 90);
+              if (!screenshotUrl) {
+                context.log.warn(`Failed to generate SAS URL for screenshot: ${i.screenshot}`);
+              }
+            }
+            
+            if (i.screenshotShiny) {
+              screenshotShinyUrl = generateBlobSasUrl(i.screenshotShiny, 90);
+              if (!screenshotShinyUrl) {
+                context.log.warn(`Failed to generate SAS URL for screenshotShiny: ${i.screenshotShiny}`);
+              }
+            }
+            
             return {
               pokemonId: i.pokemonId,
               caught: i.caught,
@@ -135,8 +152,8 @@ module.exports = async function (context, req) {
               notes: i.notes || '',
               sprite: i.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i.pokemonId}.png`,
               spriteShiny: i.spriteShiny || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${i.pokemonId}.png`,
-              screenshot: i.screenshot,
-              screenshotShiny: i.screenshotShiny,
+              screenshot: screenshotUrl,
+              screenshotShiny: screenshotShinyUrl,
               updatedAt: i.updatedAt || i.createdAt || null
             };
           })
@@ -366,6 +383,45 @@ module.exports = async function (context, req) {
     if (existingEntry) {
       // Toggle: If exists and caught is true, update. If caught is false/undefined, remove
       if (caught === false) {
+        // Delete the blob if it exists before removing the entry
+        if (existingEntry.screenshot) {
+          try {
+            const blobServiceClient = getBlobServiceClient();
+            const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
+            const containerClient = blobServiceClient.getContainerClient(containerName);
+            
+            // Extract blob name from URL (format: https://<account>.blob.core.windows.net/<container>/<blobName>?sas)
+            const blobUrl = existingEntry.screenshot.split('?')[0]; // Remove SAS token
+            const urlParts = blobUrl.split(`/${containerName}/`);
+            const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+            
+            const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+            await blockBlobClient.deleteIfExists();
+            context.log(`Deleted blob on uncatch: ${blobName}`);
+          } catch (blobError) {
+            context.log.warn('Error deleting blob on uncatch (continuing with document delete):', blobError.message);
+          }
+        }
+
+        // Delete the shiny screenshot blob if it exists
+        if (existingEntry.screenshotShiny) {
+          try {
+            const blobServiceClient = getBlobServiceClient();
+            const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
+            const containerClient = blobServiceClient.getContainerClient(containerName);
+            
+            const blobUrl = existingEntry.screenshotShiny.split('?')[0];
+            const urlParts = blobUrl.split(`/${containerName}/`);
+            const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
+            
+            const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+            await blockBlobClient.deleteIfExists();
+            context.log(`Deleted shiny blob on uncatch: ${blobName}`);
+          } catch (blobError) {
+            context.log.warn('Error deleting shiny blob on uncatch (continuing with document delete):', blobError.message);
+          }
+        }
+
         // Remove entry (mark as uncaught)
         result = await collection.deleteOne({
           userId: userId,
