@@ -2,20 +2,21 @@ const { getBlobServiceClient, emitEvent, getClientPrincipal } = require('../shar
 const { v4: uuidv4 } = require('uuid');
 
 /**
- * POST /api/media
- * Accepts an uploaded file and stores it in Azure Blob Storage
+ * POST /api/media - Upload a screenshot
+ * DELETE /api/media - Delete a user's own screenshot
  * 
- * Request Body (multipart/form-data or JSON with base64):
+ * POST Request Body:
  * {
- *   "userId": "user_123",
  *   "pokemonId": 25,
  *   "file": "base64_encoded_file_data",
  *   "fileName": "pikachu_screenshot.png",
  *   "contentType": "image/png"
  * }
+ * 
+ * DELETE Request: DELETE /api/media?blobName=userId/pokemonId/uuid.png
  */
 module.exports = async function (context, req) {
-  context.log('HTTP trigger function processed a POST request for media upload.');
+  context.log(`HTTP trigger function processed a ${req.method} request for media.`);
 
   const principal = getClientPrincipal(req);
   if (!principal || !principal.userId) {
@@ -28,103 +29,215 @@ module.exports = async function (context, req) {
   }
 
   const userId = principal.userId;
-  const { pokemonId, file, fileName, contentType } = req.body || {};
 
-  // Validate required parameters
-  if (!pokemonId || !file) {
-    context.res = {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-      body: {
-        error: 'Missing required parameters: pokemonId and file'
-      }
-    };
-    return;
-  }
+  if (req.method === 'POST') {
+    // Handle file upload
+    const { pokemonId, file, fileName, contentType } = req.body || {};
 
-  try {
-    // Get Blob Service Client
-    const blobServiceClient = getBlobServiceClient();
-    const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
-    
-    // Get container client (create container if it doesn't exist)
-    const containerClient = blobServiceClient.getContainerClient(containerName);
-    
+    // Validate required parameters
+    if (!pokemonId || !file) {
+      context.res = {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          error: 'Missing required parameters: pokemonId and file'
+        }
+      };
+      return;
+    }
+
     try {
-      await containerClient.createIfNotExists({
-        access: 'blob' // Public read access for blobs
-      });
+      // Get Blob Service Client
+      const blobServiceClient = getBlobServiceClient();
+      const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
+      
+      // Get container client (create container if it doesn't exist)
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      
+      try {
+        await containerClient.createIfNotExists({
+          access: 'blob' // Public read access for blobs
+        });
+      } catch (error) {
+        context.log('Container may already exist or error creating:', error.message);
+      }
+
+      // Generate unique blob name
+      const fileExtension = fileName ? fileName.split('.').pop() : 'png';
+      const blobName = `${userId}/${pokemonId}/${uuidv4()}.${fileExtension}`;
+      
+      // Get blob client
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      // Convert base64 to buffer if needed
+      let buffer;
+      if (typeof file === 'string') {
+        // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+        const base64Data = file.replace(/^data:image\/\w+;base64,/, '');
+        buffer = Buffer.from(base64Data, 'base64');
+      } else if (Buffer.isBuffer(file)) {
+        buffer = file;
+      } else {
+        throw new Error('Invalid file format. Expected base64 string or Buffer');
+      }
+
+      // Upload to blob storage
+      const uploadOptions = {
+        blobHTTPHeaders: {
+          blobContentType: contentType || 'image/png'
+        }
+      };
+
+      await blockBlobClient.upload(buffer, buffer.length, uploadOptions);
+
+      // Get the URL of the uploaded blob
+      const blobUrl = blockBlobClient.url;
+
+      // Emit Event Grid event
+      await emitEvent(
+        'PokedexTracker.Media.Uploaded',
+        `media/${userId}/${pokemonId}`,
+        {
+          userId: userId,
+          pokemonId: parseInt(pokemonId),
+          blobName: blobName,
+          blobUrl: blobUrl,
+          fileSize: buffer.length,
+          contentType: contentType || 'image/png',
+          timestamp: new Date()
+        }
+      );
+
+      context.res = {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          success: true,
+          message: 'File uploaded successfully',
+          url: blobUrl,
+          blobName: blobName,
+          pokemonId: parseInt(pokemonId)
+        }
+      };
+
     } catch (error) {
-      context.log('Container may already exist or error creating:', error.message);
+      context.log.error('Error uploading file:', error);
+      
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          error: 'Internal server error',
+          message: error.message
+        }
+      };
+    }
+  } else if (req.method === 'DELETE') {
+    // Handle screenshot deletion
+    const blobName = req.query.blobName || req.body?.blobName;
+
+    if (!blobName) {
+      context.res = {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          error: 'Missing required parameter: blobName'
+        }
+      };
+      return;
     }
 
-    // Generate unique blob name
-    const fileExtension = fileName ? fileName.split('.').pop() : 'png';
-    const blobName = `${userId}/${pokemonId}/${uuidv4()}.${fileExtension}`;
-    
-    // Get blob client
-    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-    // Convert base64 to buffer if needed
-    let buffer;
-    if (typeof file === 'string') {
-      // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-      const base64Data = file.replace(/^data:image\/\w+;base64,/, '');
-      buffer = Buffer.from(base64Data, 'base64');
-    } else if (Buffer.isBuffer(file)) {
-      buffer = file;
-    } else {
-      throw new Error('Invalid file format. Expected base64 string or Buffer');
+    // Security check: ensure the blob belongs to the authenticated user
+    if (!blobName.startsWith(`${userId}/`)) {
+      context.res = {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          error: 'Forbidden: You can only delete your own screenshots'
+        }
+      };
+      return;
     }
 
-    // Upload to blob storage
-    const uploadOptions = {
-      blobHTTPHeaders: {
-        blobContentType: contentType || 'image/png'
+    try {
+      // Get Blob Service Client
+      const blobServiceClient = getBlobServiceClient();
+      const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
+      const containerClient = blobServiceClient.getContainerClient(containerName);
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      // Delete the blob
+      const deleteResponse = await blockBlobClient.deleteIfExists();
+      
+      if (!deleteResponse.succeeded) {
+        context.res = {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+          body: {
+            error: 'Screenshot not found'
+          }
+        };
+        return;
       }
-    };
 
-    await blockBlobClient.upload(buffer, buffer.length, uploadOptions);
+      // Extract pokemonId from blob name (format: userId/pokemonId/uuid.ext)
+      const parts = blobName.split('/');
+      const pokemonId = parts.length >= 2 ? parseInt(parts[1]) : null;
 
-    // Get the URL of the uploaded blob
-    const blobUrl = blockBlobClient.url;
-
-    // Emit Event Grid event
-    await emitEvent(
-      'PokedexTracker.Media.Uploaded',
-      `media/${userId}/${pokemonId}`,
-      {
-        userId: userId,
-        pokemonId: parseInt(pokemonId),
-        blobName: blobName,
-        blobUrl: blobUrl,
-        fileSize: buffer.length,
-        contentType: contentType || 'image/png',
-        timestamp: new Date()
+      // Update userdex to remove screenshot reference if pokemonId is available
+      if (pokemonId) {
+        const { connectToDatabase } = require('../shared/utils');
+        const db = await connectToDatabase();
+        const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+        
+        // Remove screenshot reference from the pokemon entry
+        await collection.updateOne(
+          { userId: userId, pokemonId: pokemonId },
+          { $unset: { screenshot: "" } }
+        );
       }
-    );
 
+      // Emit Event Grid event
+      await emitEvent(
+        'PokedexTracker.Media.Deleted',
+        `media/${userId}`,
+        {
+          userId: userId,
+          pokemonId: pokemonId,
+          blobName: blobName,
+          timestamp: new Date()
+        }
+      );
+
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          success: true,
+          message: 'Screenshot deleted successfully',
+          blobName: blobName,
+          pokemonId: pokemonId
+        }
+      };
+
+    } catch (error) {
+      context.log.error('Error deleting screenshot:', error);
+      
+      context.res = {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          error: 'Internal server error',
+          message: error.message
+        }
+      };
+    }
+  } else {
     context.res = {
-      status: 201,
+      status: 405,
       headers: { 'Content-Type': 'application/json' },
       body: {
-        success: true,
-        message: 'File uploaded successfully',
-        url: blobUrl,
-        blobName: blobName,
-        pokemonId: parseInt(pokemonId)
-      }
-    };
-
-  } catch (error) {
-    context.log.error('Error uploading file:', error);
-    
-    context.res = {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: {
-        error: 'Internal server error',
-        message: error.message
+        error: 'Method not allowed'
       }
     };
   }
