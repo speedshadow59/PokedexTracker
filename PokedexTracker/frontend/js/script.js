@@ -159,7 +159,9 @@ function setupAdminDashboardTabs() {
         const panel = document.getElementById('adminPanelUsers');
         panel.innerHTML = '<div>Loading users...</div>';
         try {
-            const res = await fetch('/api/useradmin?action=listUsers', { credentials: 'include' });
+            // Add cache-busting timestamp to ensure fresh data
+            const timestamp = Date.now();
+            const res = await fetch(`/api/useradmin?action=listUsers&_t=${timestamp}`, { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch users');
             const data = await res.json();
             renderAdminUsers(panel, data.users || []);
@@ -226,12 +228,18 @@ function setupAdminDashboardTabs() {
             });
             if (!actionRes.ok) throw new Error('Failed to update user');
 
-            // Then, check the updated user list to verify the change
-            const listRes = await fetch('/api/useradmin?action=listUsers', { credentials: 'include' });
+            // Then, check the updated user status using getUser for more reliable verification
+            const timestamp = Date.now();
+            const listRes = await fetch(`/api/useradmin?action=getUser&_t=${timestamp}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ userId, action: 'getUser' })
+            });
             if (!listRes.ok) throw new Error('Failed to verify user update');
 
             const data = await listRes.json();
-            const updatedUser = (data.users || []).find(u => u.id === userId);
+            const updatedUser = data.user;
 
             if (!updatedUser) throw new Error('User not found in updated list');
 
@@ -250,14 +258,31 @@ function setupAdminDashboardTabs() {
             }
 
             if (actionSucceeded) {
-                panel.innerHTML = '<div class="success-message">User updated successfully!</div>';
+                if (isAccountChange) {
+                    panel.innerHTML = '<div class="success-message">User account status updated! Changes may take up to 60 seconds to appear in the list. <button onclick="loadAdminUsers()" class="refresh-btn">Refresh Now</button></div>';
+                } else {
+                    panel.innerHTML = '<div class="success-message">User updated successfully!</div>';
+                }
             } else {
                 panel.innerHTML = '<div class="error-message">Action completed but change not reflected yet. Please wait...</div>';
             }
 
             // Account changes (block/unblock) take longer to propagate
-            let reloadDelay = isAccountChange ? 5000 : 2000;
+            let reloadDelay = isAccountChange ? 20000 : 2000; // Increased from 10s to 20s for account changes
             setTimeout(() => loadAdminUsers(), reloadDelay);
+            
+            // For account changes, also refresh again after additional delays in case propagation is slow
+            if (isAccountChange) {
+                setTimeout(() => {
+                    console.log('Refreshing user list again for account change (30s)...');
+                    loadAdminUsers();
+                }, 30000); // Additional refresh at 30 seconds
+                
+                setTimeout(() => {
+                    console.log('Final refresh for account change (60s)...');
+                    loadAdminUsers();
+                }, 60000); // Final refresh at 60 seconds
+            }
         } catch (err) {
             panel.innerHTML = '<div class="error-message">Failed to update user. Please try again.</div>';
             // Reload the user list after showing error

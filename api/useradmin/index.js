@@ -111,12 +111,17 @@ module.exports = async function (context, req) {
             try {
                 const graphToken = await getGraphToken();
                 context.log('useradmin: got graph token');
-                const url = 'https://graph.microsoft.com/v1.0/users?$top=100&$count=true';
+                // Add timestamp for cache busting
+                const timestamp = Date.now();
+                const url = `https://graph.microsoft.com/v1.0/users?$top=500&$count=true&_=${timestamp}`;
                 context.log('useradmin: fetch', url);
                 const res = await fetch(url, {
                     headers: {
                         Authorization: `Bearer ${graphToken}`,
-                        'ConsistencyLevel': 'eventual'
+                        'ConsistencyLevel': 'eventual',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache',
+                        'Prefer': 'return=representation'
                     }
                 });
                 context.log('useradmin: fetch done', res.status, res.statusText);
@@ -128,14 +133,44 @@ module.exports = async function (context, req) {
                     context.res = { status: 500, body: { error: 'Failed to fetch users from Graph', details: text, status: res.status, statusText: res.statusText, raw: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
                     return;
                 }
+
+                // Handle pagination if there are more users
+                let allUsers = data.value || [];
+                let nextLink = data['@odata.nextLink'];
+                while (nextLink) {
+                    context.log('useradmin: fetching next page', nextLink);
+                    const nextRes = await fetch(nextLink, {
+                        headers: {
+                            Authorization: `Bearer ${graphToken}`,
+                            'ConsistencyLevel': 'eventual',
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache',
+                            'Prefer': 'return=representation'
+                        }
+                    });
+                    if (nextRes.ok) {
+                        const nextData = await nextRes.json();
+                        allUsers = allUsers.concat(nextData.value || []);
+                        nextLink = nextData['@odata.nextLink'];
+                    } else {
+                        context.log('useradmin: failed to fetch next page', nextRes.status);
+                        break;
+                    }
+                }
+
+                context.log('useradmin: total users fetched', allUsers.length);
                 // Map to expected frontend format
-                const users = (data.value || []).map(u => ({
-                    id: u.id,
-                    name: u.displayName || u.userPrincipalName || u.mail,
-                    email: u.mail || u.userPrincipalName,
-                    isAdmin: false, // Will be determined by checking app roles for each user
-                    blocked: u.accountEnabled === false
-                }));
+                const users = allUsers.map(u => {
+                    const blocked = u.accountEnabled === false;
+                    context.log(`useradmin: user ${u.displayName || u.userPrincipalName} - accountEnabled: ${u.accountEnabled}, blocked: ${blocked}`);
+                    return {
+                        id: u.id,
+                        name: u.displayName || u.userPrincipalName || u.mail,
+                        email: u.mail || u.userPrincipalName,
+                        isAdmin: false, // Will be determined by checking app roles for each user
+                        blocked: blocked
+                    };
+                });
 
                 // Check admin roles for each user
                 for (const user of users) {
@@ -148,11 +183,49 @@ module.exports = async function (context, req) {
                     }
                 }
                 context.log('useradmin: users found', users.length);
-                context.res = { status: 200, body: { users, rawGraph: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
+                context.res = { status: 200, body: { users, totalFetched: allUsers.length, rawGraph: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
                 return;
             } catch (err) {
                 context.log('useradmin: exception', err && err.message, err && err.stack);
                 context.res = { status: 500, body: { error: 'Exception in listUsers', details: err && err.message, stack: err && err.stack } };
+                return;
+            }
+        }
+        if (action === 'getUser' && req.body && req.body.userId) {
+            context.log('useradmin: getUser start', req.body.userId);
+            try {
+                const graphToken = await getGraphToken();
+                const timestamp = Date.now();
+                const url = `https://graph.microsoft.com/v1.0/users/${req.body.userId}?$select=id,displayName,userPrincipalName,mail,accountEnabled&_=${timestamp}`;
+                context.log('useradmin: fetch user', url);
+                const res = await fetch(url, {
+                    headers: {
+                        Authorization: `Bearer ${graphToken}`,
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    context.log('useradmin: graph error', text);
+                    context.res = { status: 500, body: { error: 'Failed to fetch user from Graph', details: text, status: res.status } };
+                    return;
+                }
+                const userData = await res.json();
+                const roles = await getUserAppRoles(req.body.userId);
+                const user = {
+                    id: userData.id,
+                    name: userData.displayName || userData.userPrincipalName || userData.mail,
+                    email: userData.mail || userData.userPrincipalName,
+                    isAdmin: roles.includes('Admin'),
+                    blocked: userData.accountEnabled === false
+                };
+                context.log('useradmin: user fetched', user);
+                context.res = { status: 200, body: { user, rawGraph: userData } };
+                return;
+            } catch (err) {
+                context.log('useradmin: exception', err && err.message, err && err.stack);
+                context.res = { status: 500, body: { error: 'Exception in getUser', details: err && err.message, stack: err && err.stack } };
                 return;
             }
         }
