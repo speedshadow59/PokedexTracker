@@ -491,7 +491,11 @@ function setupEventListeners() {
     // Search input
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
-        searchInput.addEventListener('input', filterPokemonBySearch);
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                filterPokemonBySearch(e);
+            }
+        });
     }
 
     const aiToggle = document.getElementById('aiSearchToggle');
@@ -655,6 +659,16 @@ function filterPokemonBySearch(e) {
     // Example: get caught filter from a checkbox or UI element
     const caughtCheckbox = document.getElementById('caughtFilter');
     const caughtFilter = caughtCheckbox ? caughtCheckbox.checked : undefined;
+
+    if (!searchTerm) {
+        // Clear search results to show all Pokemon
+        currentSearchResults = null;
+        renderPokemonGrid();
+        updateProgress();
+        const emptyMsg = document.getElementById('searchEmpty');
+        if (emptyMsg) emptyMsg.style.display = 'none';
+        return;
+    }
 
     // Always call backend search
     let url = `${window.APP_CONFIG.API_BASE_URL}/search?q=${encodeURIComponent(searchTerm)}`;
