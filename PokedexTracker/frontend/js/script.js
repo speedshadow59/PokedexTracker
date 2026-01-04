@@ -1122,7 +1122,19 @@ function openPokemonModal(pokemon) {
     // Handle screenshot preview
     const previewDiv = document.getElementById('screenshotPreview');
     if (caughtInfo.screenshot) {
-        previewDiv.innerHTML = `<img src="${caughtInfo.screenshot}" alt="Screenshot">`;
+        previewDiv.innerHTML = `
+            <div style="position: relative; display: inline-block;">
+                <img src="${caughtInfo.screenshot}" alt="Screenshot" style="max-width: 100%; border-radius: 6px; border: 1px solid #d1d5db;">
+                <button id="deleteScreenshotBtn" style="position: absolute; top: 5px; right: 5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1;">×</button>
+            </div>
+        `;
+        // Add event listener for delete button
+        setTimeout(() => {
+            const deleteBtn = document.getElementById('deleteScreenshotBtn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', deleteScreenshot);
+            }
+        }, 0);
     } else {
         previewDiv.innerHTML = '';
     }
@@ -1308,6 +1320,59 @@ async function uploadScreenshotToBackend(pokemonId, base64Data) {
     }
 }
 
+async function deleteScreenshot() {
+    if (!selectedPokemon) return;
+    if (!isAuthenticated()) {
+        showToast('Sign in to delete screenshots.', 'warning');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this screenshot?')) {
+        return;
+    }
+    
+    try {
+        const caughtData = getCaughtData();
+        const caughtInfo = caughtData[selectedPokemon.id] || {};
+        const isShiny = document.getElementById('shinyToggle').checked;
+        
+        // Determine which screenshot to delete
+        const updateData = { pokemonId: selectedPokemon.id };
+        if (isShiny && caughtInfo.screenshotShiny) {
+            updateData.screenshotShiny = null;
+        } else if (!isShiny && caughtInfo.screenshot) {
+            updateData.screenshot = null;
+        } else {
+            // Fallback: delete whichever exists
+            if (caughtInfo.screenshot) updateData.screenshot = null;
+            if (caughtInfo.screenshotShiny) updateData.screenshotShiny = null;
+        }
+        
+        // Call backend API to delete screenshot
+        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+            // Update local data
+            if (caughtData[selectedPokemon.id]) {
+                if (updateData.screenshot !== undefined) caughtData[selectedPokemon.id].screenshot = null;
+                if (updateData.screenshotShiny !== undefined) caughtData[selectedPokemon.id].screenshotShiny = null;
+                saveCaughtData(caughtData);
+            }
+            
+            // Update UI
+            document.getElementById('screenshotPreview').innerHTML = '';
+            showToast('Screenshot deleted.', 'success');
+        } else {
+            showToast('Failed to delete screenshot.', 'error');
+        }
+    } catch (error) {
+        showToast('Network error—could not delete screenshot.', 'error');
+    }
+}
 
 function uncatchPokemon() {
     if (!selectedPokemon) return;
