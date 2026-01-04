@@ -277,21 +277,25 @@ async function setUserRole(userId, role) {
 
     const assignmentsData = await assignmentsRes.json();
     console.log(`[DEMOTE DEBUG] Found ${assignmentsData.value?.length || 0} assignments`);
-    console.log(`[DEMOTE DEBUG] Looking for spId: ${spId}, adminRoleId: ${adminRoleId}`);
+    console.log(`[DEMOTE DEBUG] Looking for spId: ${spId}, all Admin role IDs`);
 
-    const adminAssignment = assignmentsData.value.find(a => {
-      console.log(`[DEMOTE DEBUG] Checking assignment:`, {
-        id: a.id,
-        principalId: a.principalId,
-        resourceId: a.resourceId,
-        appRoleId: a.appRoleId
-      });
-      return a.resourceId === spId && a.appRoleId === adminRoleId;
-    });
+    // Find ALL Admin role assignments (in case there are multiple Admin roles)
+    const adminRoleIds = [];
+    for (const [roleId, roleName] of appRoleMap.entries()) {
+      if (roleName === 'Admin') {
+        adminRoleIds.push(roleId);
+      }
+    }
+    console.log(`[DEMOTE DEBUG] Found Admin role IDs:`, adminRoleIds);
 
-    console.log(`[DEMOTE DEBUG] Found admin assignment:`, adminAssignment);
+    const adminAssignments = assignmentsData.value.filter(a =>
+      a.resourceId === spId && adminRoleIds.includes(a.appRoleId)
+    );
 
-    if (adminAssignment) {
+    console.log(`[DEMOTE DEBUG] Found ${adminAssignments.length} admin assignments to remove:`, adminAssignments);
+
+    // Remove all Admin assignments
+    for (const adminAssignment of adminAssignments) {
       const deleteUrl = `https://graph.microsoft.com/v1.0/appRoleAssignments/${adminAssignment.id}`;
       console.log(`[DEMOTE DEBUG] Deleting assignment at: ${deleteUrl}`);
       const deleteRes = await fetch(deleteUrl, {
@@ -301,11 +305,10 @@ async function setUserRole(userId, role) {
 
       if (!deleteRes.ok) {
         const text = await deleteRes.text();
+        console.log(`[DEMOTE DEBUG] Failed to delete assignment ${adminAssignment.id}: ${deleteRes.status} ${deleteRes.statusText} - ${text}`);
         throw new Error(`Failed to remove Admin role: ${deleteRes.status} ${deleteRes.statusText} - ${text}`);
       }
-      console.log(`[DEMOTE DEBUG] Successfully deleted admin assignment`);
-    } else {
-      console.log(`[DEMOTE DEBUG] No admin assignment found to delete`);
+      console.log(`[DEMOTE DEBUG] Successfully deleted admin assignment ${adminAssignment.id}`);
     }
 
     return { success: true, action: 'removed', role: 'user' };
