@@ -1,23 +1,8 @@
-// Minimal test version without dependencies to debug routing
-const { getClientPrincipal, getUserAppRoles, getServicePrincipalRoleMap } = require('../shared/utils');
-console.log('DEBUG utils import:', { getClientPrincipal, getUserAppRoles, getServicePrincipalRoleMap });
-if (typeof getServicePrincipalRoleMap !== 'function') {
-  // Minimal test endpoint for runtime visibility
-  // ...existing code...
-  module.exports = async function (context, req) {
-    context.res = {
-      status: 500,
-      body: {
-        error: 'getServicePrincipalRoleMap is not a function',
-        details: typeof getServicePrincipalRoleMap
-      }
-    };
-    return;
-  };
-}
+// Admin authentication check endpoint
+const { getClientPrincipal, getUserAppRoles } = require('../shared/utils');
 
 module.exports = async function (context, req) {
-  const { getGraphToken, setUserRole, blockUser } = require('../shared/utils');
+  const { getGraphToken } = require('../shared/utils');
   try {
     const principal = getClientPrincipal(req);
     context.log('DEBUG: principal', principal);
@@ -29,120 +14,6 @@ module.exports = async function (context, req) {
       };
       return;
     }
-
-    // User management actions (admin dashboard)
-    const action = req.query.action || (req.body && req.body.action);
-    if (action === 'listUsers') {
-      try {
-        const graphToken = await getGraphToken();
-        const url = 'https://graph.microsoft.com/v1.0/users?$top=100&$count=true&$select=id,displayName,userPrincipalName,mail,accountEnabled';
-        const res = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${graphToken}`,
-            'ConsistencyLevel': 'eventual'
-          }
-        });
-        const text = await res.text();
-        let data = {};
-        try { data = JSON.parse(text); } catch (e) { data = { parseError: e.message, raw: text }; }
-        if (!res.ok) {
-          context.res = { status: 500, body: { error: 'Failed to fetch users from Graph', details: text, status: res.status, statusText: res.statusText, raw: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
-          return;
-        }
-        // For each user, fetch their app roles and set isAdmin accordingly
-        const users = await Promise.all((data.value || []).map(async u => {
-          let roles = [];
-          try {
-            roles = await getUserAppRoles(u.id);
-          } catch (e) {
-            // If role lookup fails, treat as non-admin
-            roles = [];
-          }
-          return {
-            id: u.id,
-            name: u.displayName || u.userPrincipalName || u.mail,
-            email: u.mail || u.userPrincipalName,
-            isAdmin: roles.includes('Admin'),
-            blocked: u.accountEnabled === false
-          };
-        }));
-        context.res = { status: 200, body: { users, rawGraph: data, requestUrl: url, requestHeaders: { Authorization: 'Bearer ...', ConsistencyLevel: 'eventual' } } };
-        return;
-      } catch (err) {
-        context.res = { status: 500, body: { error: 'Exception in listUsers', details: err && err.message, stack: err && err.stack } };
-        return;
-      }
-    }
-    if ((action === 'promoteAdmin' || action === 'demoteAdmin') && req.body && req.body.userId) {
-      try {
-        const graphToken = await getGraphToken();
-        // Get service principal and appRoleMap
-        const { spId, appRoleMap } = await getServicePrincipalRoleMap(graphToken);
-        // Find the Admin appRoleId
-        const adminRoleId = [...appRoleMap.entries()].find(([id, val]) => val === 'Admin')?.[0];
-        if (!adminRoleId) throw new Error('Admin app role not found');
-        const userId = req.body.userId;
-        if (action === 'promoteAdmin') {
-          // Assign Admin role
-          const assignRes = await fetch(`https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${graphToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              principalId: userId,
-              resourceId: spId,
-              appRoleId: adminRoleId
-            })
-          });
-          const assignData = await assignRes.json();
-          if (!assignRes.ok) throw new Error(assignData.error?.message || 'Failed to assign admin role');
-          context.res = { status: 200, body: { result: 'Admin role assigned', details: assignData } };
-          return;
-        } else if (action === 'demoteAdmin') {
-          // Remove Admin role assignment
-          // List current assignments
-          const assignmentsRes = await fetch(`https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`, {
-            headers: { 'Authorization': `Bearer ${graphToken}` }
-          });
-          const assignmentsData = await assignmentsRes.json();
-          if (!assignmentsRes.ok) throw new Error(assignmentsData.error?.message || 'Failed to list appRoleAssignments');
-          const adminAssignment = (assignmentsData.value || []).find(a => a.appRoleId === adminRoleId);
-          if (!adminAssignment) throw new Error('User does not have Admin role assigned');
-          // Delete the assignment
-          const delRes = await fetch(`https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments/${adminAssignment.id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${graphToken}` }
-          });
-          if (!delRes.ok) throw new Error('Failed to remove admin role assignment');
-          context.res = { status: 200, body: { result: 'Admin role removed' } };
-          return;
-        }
-      } catch (err) {
-        context.res = { status: 500, body: { error: err && err.message, stack: err && err.stack } };
-        return;
-      }
-    }
-    if ((action === 'blockUser' || action === 'unblockUser') && req.body && req.body.userId) {
-      try {
-        const graphToken = await getGraphToken();
-        const userId = req.body.userId;
-        const patchRes = await fetch(`https://graph.microsoft.com/v1.0/users/${userId}`, {
-          method: 'PATCH',
-          headers: { 'Authorization': `Bearer ${graphToken}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ accountEnabled: action === 'unblockUser' })
-        });
-        if (!patchRes.ok) {
-          const patchData = await patchRes.json().catch(() => ({}));
-          throw new Error(patchData.error?.message || 'Failed to update accountEnabled');
-        }
-        context.res = { status: 200, body: { result: action === 'unblockUser' ? 'User unblocked' : 'User blocked' } };
-        return;
-      } catch (err) {
-        context.res = { status: 500, body: { error: err && err.message, stack: err && err.stack } };
-        return;
-      }
-    }
-
-    // Default: original checkadmin logic
 
     // Default: original checkadmin logic
     let userId = null;
@@ -242,4 +113,4 @@ module.exports = async function (context, req) {
       })
     };
   }
-}
+};
