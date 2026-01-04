@@ -202,8 +202,20 @@ module.exports = async function (context, req) {
 
       context.log('userdex GET: query =', query);
       context.log('userdex GET: found items count =', items.length);
+      
+      // Also check total documents in collection
+      const totalDocs = await collection.countDocuments();
+      context.log('userdex GET: total documents in collection =', totalDocs);
+      
       if (items.length > 0) {
         context.log('userdex GET: sample item =', items[0]);
+      } else {
+        // Try to find any documents with this userId regardless of caught status
+        const anyUserDocs = await collection.find({ userId: userId }).limit(5).toArray();
+        context.log('userdex GET: any documents for this userId =', anyUserDocs.length);
+        if (anyUserDocs.length > 0) {
+          context.log('userdex GET: sample user document =', anyUserDocs[0]);
+        }
       }
 
       context.res = {
@@ -501,6 +513,10 @@ module.exports = async function (context, req) {
           createdAt: new Date(),
           updatedAt: new Date()
         });
+        
+        context.log('userdex PUT: inserted document with userId =', userId);
+        context.log('userdex PUT: inserted document id =', `${userId}-${parseInt(pokemonId)}`);
+        
         action = 'caught';
       } else {
         // Nothing to do - trying to uncatch something that doesn't exist
