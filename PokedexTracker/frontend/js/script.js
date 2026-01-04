@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const adminSection = document.getElementById('adminDashboard');
             if (adminSection) {
-                adminSection.scrollIntoView({ behavior: 'smooth' });
+                adminSection.style.display = adminSection.style.display === 'none' ? '' : 'none';
             }
         });
     }
@@ -105,7 +105,7 @@ async function checkAdminAndShowDashboard() {
         const adminDashboard = document.getElementById('adminDashboard');
         const adminBtn = document.getElementById('adminDashboardBtn');
         if (data.isAdmin) {
-            if (adminDashboard) adminDashboard.style.display = '';
+            if (adminDashboard) adminDashboard.style.display = 'none'; // Hide on load
             if (adminBtn) adminBtn.style.display = '';
             setupAdminDashboardTabs();
         } else {
