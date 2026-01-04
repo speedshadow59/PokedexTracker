@@ -390,6 +390,8 @@ function setupAdminDashboardTabs() {
 
         panel.innerHTML = html;
     }
+
+    async function loadAdminMedia() {
         const panel = document.getElementById('adminPanelMedia');
         panel.innerHTML = '<div>Loading media...</div>';
         try {
