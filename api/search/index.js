@@ -107,7 +107,7 @@ module.exports = async function (context, req) {
           throw new Error(`Azure AI Search query failed: ${res.status} ${res.statusText} - ${text}`);
         }
         const data = await res.json();
-        const results = Array.isArray(data.value)
+        let results = Array.isArray(data.value)
           ? data.value.map(doc => ({
               pokemonId: doc.pokemonId,
               name: doc.name || `pokemon-${doc.pokemonId}`,
@@ -123,6 +123,15 @@ module.exports = async function (context, req) {
             }))
           : [];
 
+        // Apply filters to AI search results (same as local search)
+        results = results.filter(item => {
+          const passesRegion = !regionFilter || item.region?.toLowerCase() === regionFilter;
+          const passesCaught = caughtFilter === null || item.caught === caughtFilter;
+          const passesShiny = shinyFilter === null || item.shiny === shinyFilter;
+          const passesScreenshot = !screenshotFilter || item.screenshot;
+
+          return passesRegion && passesCaught && passesShiny && passesScreenshot;
+        });
 
         context.res = {
           status: 200,
