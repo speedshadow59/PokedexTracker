@@ -8,6 +8,15 @@ const POKE_API_BASE = 'https://pokeapi.co/api/v2/pokemon/';
 const pokemonCache = new Map();
 
 function getSearchConfig() {
+    // DEBUG: Log config for troubleshooting
+    if (process.env.NODE_ENV !== 'production') {
+      // Avoid leaking secrets in production logs
+      console.log('[DEBUG] Azure Search config:', {
+        endpoint: process.env.AZURE_SEARCH_ENDPOINT || process.env.AZURE_AI_SEARCH_ENDPOINT,
+        apiKey: process.env.AZURE_SEARCH_KEY ? 'set' : (process.env.AZURE_SEARCH_ADMIN_KEY ? 'set' : 'unset'),
+        indexName: process.env.AZURE_SEARCH_INDEX || process.env.AZURE_AI_SEARCH_INDEX || 'userdex'
+      });
+    }
   const endpoint = process.env.AZURE_SEARCH_ENDPOINT || process.env.AZURE_AI_SEARCH_ENDPOINT;
   const apiKey = process.env.AZURE_SEARCH_KEY || process.env.AZURE_SEARCH_ADMIN_KEY;
   const indexName = process.env.AZURE_SEARCH_INDEX || process.env.AZURE_AI_SEARCH_INDEX || 'userdex';
@@ -95,6 +104,8 @@ function buildSearchFilter(userId, regionFilter, caughtFilter, shinyFilter) {
 }
 
 async function runAzureSearch(config, query, options, context) {
+    // DEBUG: Log Azure Search request
+    context.log('[DEBUG] Azure Search request', { endpoint, indexName, query, filter, top: options.topK });
   const { endpoint, apiKey, indexName } = config;
   // Only filter by userId if provided (for user-specific search)
   let filter = undefined;
@@ -165,6 +176,7 @@ async function runAzureSearch(config, query, options, context) {
 }
 
 module.exports = async function (context, req) {
+    context.log('[DEBUG] Handler start', { isAISearch, searchConfig });
   const principal = getClientPrincipal(req);
   const searchConfig = getSearchConfig();
   const isAISearch = !!searchConfig;
@@ -275,6 +287,7 @@ module.exports = async function (context, req) {
       usedAI = true;
       results = searchResults.slice(0, topK);
     } catch (err) {
+      context.log.error('[DEBUG] Azure AI Search error', err);
       context.log.warn('Azure AI Search failed, falling back to keyword search', err.message);
       // fallback to local keyword search
       const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
