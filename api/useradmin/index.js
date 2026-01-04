@@ -268,7 +268,8 @@ module.exports = async function (context, req) {
                     resolvedUserId: userData.id,
                     pokemonQuery: { userId: userData.id, caught: true },
                     totalDocsInCollection: 0,
-                    docsForUser: []
+                    docsForUser: [],
+                    distinctUserIds: []
                 };
                 
                 try {
@@ -299,8 +300,13 @@ module.exports = async function (context, req) {
                         context.log('useradmin: sample user document:', anyUserDocs[0]);
                     }
                     
+                    // Get distinct userIds in the collection
+                    const distinctUserIds = await userdexCollection.distinct("userId");
+                    context.log('useradmin: distinct userIds in collection:', distinctUserIds);
+                    
                     debugData.totalDocsInCollection = totalDocs;
                     debugData.docsForUser = anyUserDocs;
+                    debugData.distinctUserIds = distinctUserIds;
                     
                     const totalCaught = userPokemon.length;
                     const shinyCaught = userPokemon.filter(p => p.shiny).length;
