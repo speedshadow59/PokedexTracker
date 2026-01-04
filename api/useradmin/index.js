@@ -267,11 +267,15 @@ module.exports = async function (context, req) {
                     const db = await connectToDatabase();
                     const userdexCollection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
                     
+                    context.log('useradmin: querying userdex for userId:', userData.id);
+                    
                     // Get all caught Pokemon for this user
                     const userPokemon = await userdexCollection.find({ 
                         userId: userData.id,
                         caught: true 
                     }).toArray();
+                    
+                    context.log('useradmin: found userPokemon count:', userPokemon.length);
                     
                     const totalCaught = userPokemon.length;
                     const shinyCaught = userPokemon.filter(p => p.shiny).length;

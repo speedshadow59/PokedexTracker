@@ -1877,6 +1877,8 @@ async function showProfileModal() {
             throw new Error('User data not found');
         }
 
+        console.log('showProfileModal: user pokemonStats', user.pokemonStats);
+
         // Display profile information
         content.innerHTML = `
             <div class="profile-info"><strong>User ID:</strong> <span>${user.id}</span></div>
