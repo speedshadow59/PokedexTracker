@@ -132,14 +132,16 @@ module.exports = async function (context, req) {
             let screenshotShinyUrl = null;
             
             if (i.screenshot) {
-              screenshotUrl = generateBlobSasUrl(i.screenshot, 90);
+              const baseUrl = typeof i.screenshot === 'string' && i.screenshot.includes('?') ? i.screenshot.split('?')[0] : i.screenshot;
+              screenshotUrl = generateBlobSasUrl(baseUrl, 90);
               if (!screenshotUrl) {
                 context.log.warn(`Failed to generate SAS URL for screenshot: ${i.screenshot}`);
               }
             }
             
             if (i.screenshotShiny) {
-              screenshotShinyUrl = generateBlobSasUrl(i.screenshotShiny, 90);
+              const baseUrlShiny = typeof i.screenshotShiny === 'string' && i.screenshotShiny.includes('?') ? i.screenshotShiny.split('?')[0] : i.screenshotShiny;
+              screenshotShinyUrl = generateBlobSasUrl(baseUrlShiny, 90);
               if (!screenshotShinyUrl) {
                 context.log.warn(`Failed to generate SAS URL for screenshotShiny: ${i.screenshotShiny}`);
               }
@@ -191,20 +193,31 @@ module.exports = async function (context, req) {
       const cursor = collection.find({ userId: userId }, { projection: { pokemonId: 1, caught: 1, shiny: 1, notes: 1, screenshot: 1, updatedAt: 1, createdAt: 1 } });
       const items = await cursor.toArray();
 
+      // Regenerate SAS tokens for screenshots to ensure they don't expire
+      const processedItems = items.map(i => {
+        let screenshot = i.screenshot;
+        if (screenshot && typeof screenshot === 'string' && screenshot.includes('?')) {
+          const baseUrl = screenshot.split('?')[0];
+          const newSas = generateBlobSasUrl(baseUrl);
+          if (newSas) screenshot = newSas;
+        }
+        return {
+          pokemonId: i.pokemonId,
+          caught: i.caught,
+          shiny: i.shiny || false,
+          notes: i.notes || '',
+          screenshot: screenshot || null,
+          updatedAt: i.updatedAt || i.createdAt || null
+        };
+      });
+
       context.res = {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
         body: {
           userId: userId,
           count: items.length,
-          pokemon: items.map(i => ({
-            pokemonId: i.pokemonId,
-            caught: i.caught,
-            shiny: i.shiny || false,
-            notes: i.notes || '',
-            screenshot: i.screenshot || null,
-            updatedAt: i.updatedAt || i.createdAt || null
-          }))
+          pokemon: processedItems
         }
       };
       return;
