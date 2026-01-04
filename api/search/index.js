@@ -225,7 +225,7 @@ module.exports = async function (context, req) {
         if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
           continue;
         }
-        if (caughtFilter !== undefined && !!doc.caught !== caughtFilter) {
+        if (caughtFilter !== undefined && Boolean(doc.caught) !== Boolean(caughtFilter)) {
           continue;
         }
 
