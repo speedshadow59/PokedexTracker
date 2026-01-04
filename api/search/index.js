@@ -83,10 +83,6 @@ module.exports = async function (context, req) {
         const url = `${searchConfig.endpoint}/indexes/${searchConfig.indexName}/docs/search?api-version=2023-11-01`;
         let searchQuery = query || '*';
         let queryType = 'simple';
-        if (query && query !== '*') {
-          searchQuery = `*${query}*`;
-          queryType = 'full';
-        }
         const body = {
           search: searchQuery,
           top: topK,
