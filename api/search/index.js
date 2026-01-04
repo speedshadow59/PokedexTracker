@@ -173,17 +173,18 @@ async function runAzureSearch(config, query, options, context) {
 
 export default async function (context, req) {
   context.log('[DEBUG] search function invoked');
+  let principal, searchConfig, query, regionFilter, caughtFilter, shinyFilter, screenshotFilter, topKInput, topK, aiSearchEnabled;
   try {
-    const principal = getClientPrincipal(req);
-    const searchConfig = getSearchConfig();
-    const query = (req.query.q || req.query.query || (req.body && req.body.query) || '').trim();
-    const regionFilter = (req.query.region || (req.body && req.body.region) || '').toLowerCase();
-    const caughtFilter = parseBoolean(req.query.caught ?? req.body?.caught);
-    const shinyFilter = parseBoolean(req.query.shiny ?? req.body?.shiny);
-    const screenshotFilter = req.query.screenshot === 'true' || req.body?.screenshot === true;
-    const topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
-    const topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
-    const aiSearchEnabled = searchConfig && (req.query.ai === 'true' || req.body?.ai === true);
+    principal = getClientPrincipal(req);
+    searchConfig = getSearchConfig();
+    query = (req.query.q || req.query.query || (req.body && req.body.query) || '').trim();
+    regionFilter = (req.query.region || (req.body && req.body.region) || '').toLowerCase();
+    caughtFilter = parseBoolean(req.query.caught ?? req.body?.caught);
+    shinyFilter = parseBoolean(req.query.shiny ?? req.body?.shiny);
+    screenshotFilter = req.query.screenshot === 'true' || req.body?.screenshot === true;
+    topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
+    topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
+    aiSearchEnabled = searchConfig && (req.query.ai === 'true' || req.body?.ai === true);
 
     // --- AI Search Path ---
     if (aiSearchEnabled) {
@@ -209,7 +210,9 @@ export default async function (context, req) {
         context.res = {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
-          body: { error: 'Azure AI Search failed', details: err && err.stack }
+          body: { error: 'Azure AI Search failed', details: err && err.stack, debug: {
+            principal, searchConfig, query, regionFilter, caughtFilter, shinyFilter, screenshotFilter, topK, aiSearchEnabled
+          } }
         };
       }
       return;
@@ -221,7 +224,9 @@ export default async function (context, req) {
       db = await connectToDatabase();
     } catch (err) {
       context.log.error('DB connection failed', err);
-      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed', details: err && err.stack } };
+      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed', details: err && err.stack, debug: {
+        principal, searchConfig, query, regionFilter, caughtFilter, shinyFilter, screenshotFilter, topK, aiSearchEnabled
+      } } };
       return;
     }
     const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
@@ -232,7 +237,9 @@ export default async function (context, req) {
       pokedexDocs = await pokedexCol.find({}).limit(MAX_ITEMS).toArray();
     } catch (err) {
       context.log.error('Failed to query pokedex', err);
-      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query pokedex', details: err && err.stack } };
+      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query pokedex', details: err && err.stack, debug: {
+        principal, searchConfig, query, regionFilter, caughtFilter, shinyFilter, screenshotFilter, topK, aiSearchEnabled
+      } } };
       return;
     }
 
@@ -241,7 +248,9 @@ export default async function (context, req) {
       userdexDocs = await userdexCol.find({ userId: principal.userId }).limit(MAX_ITEMS).toArray();
     } catch (err) {
       context.log.error('Failed to query userdex', err);
-      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data', details: err && err.stack } };
+      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data', details: err && err.stack, debug: {
+        principal, searchConfig, query, regionFilter, caughtFilter, shinyFilter, screenshotFilter, topK, aiSearchEnabled
+      } } };
       return;
     }
     const userdexMap = {};
@@ -338,7 +347,9 @@ export default async function (context, req) {
     context.res = {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: { error: 'Unhandled error in search handler', details: err && err.stack }
+      body: { error: 'Unhandled error in search handler', details: err && err.stack, debug: {
+        principal, searchConfig, query, regionFilter, caughtFilter, shinyFilter, screenshotFilter, topK, aiSearchEnabled
+      } }
     };
   }
 }
