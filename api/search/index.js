@@ -92,7 +92,7 @@ module.exports = async function (context, req) {
           top: topK,
           queryType,
           searchMode: 'all',
-          select: 'id,pokemonId,name,types,region,sprite,spriteShiny,caught,shiny,notes,screenshot,@search.score'
+          select: 'id,pokemonId,name,types,region,sprite,spriteShiny,@search.score'
         };
         const res = await fetch(url, {
           method: 'POST',
