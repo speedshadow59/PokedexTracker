@@ -489,6 +489,9 @@ function setupAdminDashboardTabs() {
 
     // Make functions globally accessible for onclick handlers
     window.loadAdminAudit = loadAdminAudit;
+    window.loadAdminUsers = loadAdminUsers;
+    window.loadAdminMedia = loadAdminMedia;
+}
 }
 
 // Load region from URL if present
