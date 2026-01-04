@@ -192,7 +192,9 @@ module.exports = async function (context, req) {
 
     try {
       const db = await connectToDatabase();
+      context.log('userdex GET: database connection successful');
       const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      context.log('userdex GET: collection name =', process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
       const query = { userId: userId };
       if (pokemonId) {
         query.pokemonId = pokemonId;
@@ -395,10 +397,14 @@ module.exports = async function (context, req) {
     return;
   }
 
+  context.log('userdex PUT: principal =', principal);
+
   try {
     // Connect to Cosmos DB
     const db = await connectToDatabase();
+    context.log('userdex PUT: database connection successful');
     const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+    context.log('userdex PUT: collection name =', process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
 
     // Check if entry exists
     const existingEntry = await collection.findOne({
