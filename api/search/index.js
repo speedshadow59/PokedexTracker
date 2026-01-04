@@ -10,7 +10,7 @@ const pokemonCache = new Map();
 function getSearchConfig() {
   const endpoint = process.env.AZURE_SEARCH_ENDPOINT || process.env.AZURE_AI_SEARCH_ENDPOINT;
   const apiKey = process.env.AZURE_SEARCH_KEY || process.env.AZURE_SEARCH_ADMIN_KEY;
-  const indexName = process.env.AZURE_SEARCH_INDEX || process.env.AZURE_AI_SEARCH_INDEX || 'userdex';
+  const indexName = process.env.AZURE_SEARCH_INDEX || process.env.AZURE_AI_SEARCH_INDEX || 'pokeapi';
   if (!endpoint || !apiKey) return null;
   return { endpoint: endpoint.replace(/\/?$/, ''), apiKey, indexName };
 }
