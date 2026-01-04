@@ -264,23 +264,36 @@ module.exports = async function (context, req) {
   if (isAISearch) {
     try {
       const searchResults = await runAzureSearch(searchConfig, query, {
-        // Do not filter by userId for AI/global search
         userId: undefined,
         regionFilter,
         caughtFilter,
         shinyFilter,
         topK
       }, context);
-      if (searchResults && searchResults.length) {
-        usedAI = true; // using Azure AI Search service
-        results = searchResults.slice(0, topK);
-      }
+      usedAI = true;
+      results = searchResults.slice(0, topK);
     } catch (err) {
       context.log.warn('Azure AI Search failed, falling back to keyword search', err.message);
+      // fallback to local keyword search
+      const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
+      scored.sort((a, b) => b.score - a.score);
+      results = scored.slice(0, topK).map(entry => ({
+        pokemonId: entry.item.pokemonId,
+        name: entry.item.name,
+        sprite: entry.item.sprite,
+        spriteShiny: entry.item.spriteShiny,
+        types: entry.item.types,
+        region: entry.item.region,
+        caught: entry.item.caught,
+        shiny: entry.item.shiny,
+        notes: entry.item.notes,
+        screenshot: entry.item.screenshot,
+        similarity: Number(entry.score.toFixed(4))
+      }));
+      usedAI = false;
     }
-  }
-
-  if (!results.length) {
+  } else {
+    // No AI search, always use local keyword search
     const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
     scored.sort((a, b) => b.score - a.score);
     results = scored.slice(0, topK).map(entry => ({

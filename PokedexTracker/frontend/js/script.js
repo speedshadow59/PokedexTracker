@@ -653,12 +653,16 @@ function filterPokemonBySearch(e) {
     const rawSearch = e.target.value;
 
     if (aiSearchEnabled) {
-        runAISearch(rawSearch);
-        // Hide empty state if input is cleared
         if (!rawSearch.trim()) {
+            // Reset filters and show all Pokémon
+            currentSearchResults = null;
+            renderPokemonGrid();
+            updateProgress();
             const emptyMsg = document.getElementById('searchEmpty');
             if (emptyMsg) emptyMsg.style.display = 'none';
+            return;
         }
+        runAISearch(rawSearch);
         return;
     }
 
