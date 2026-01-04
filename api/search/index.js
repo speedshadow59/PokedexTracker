@@ -15,11 +15,32 @@ function getSearchConfig() {
   return { endpoint: endpoint.replace(/\/?$/, ''), apiKey, indexName };
 }
 
-function keywordScore(text, query) {
+function keywordScore(text, query, pokemonName) {
   if (!text || !query) return 0;
   const haystack = text.toLowerCase();
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return terms.reduce((score, term) => score + (haystack.includes(term) ? 1 : 0), 0);
+  const nameLower = pokemonName?.toLowerCase() || '';
+  const queryLower = query.toLowerCase();
+  const terms = queryLower.split(/\s+/).filter(Boolean);
+
+  let score = 0;
+
+  // Higher priority for partial name matches
+  for (const term of terms) {
+    // Exact prefix match in name (highest priority)
+    if (nameLower.startsWith(term)) {
+      score += 10;
+    }
+    // Substring match in name (high priority)
+    else if (nameLower.includes(term)) {
+      score += 5;
+    }
+    // Substring match in any text (lower priority)
+    else if (haystack.includes(term)) {
+      score += 1;
+    }
+  }
+
+  return score;
 }
 
 function inferRegionFromDex(pokemonId) {
@@ -279,7 +300,7 @@ module.exports = async function (context, req) {
       };
       return;
     }
-    const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
+    const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query, item.name) }));
     scored.sort((a, b) => b.score - a.score);
     // Only return items with a score > 0 (relevant matches)
     const relevantResults = scored.filter(entry => entry.score > 0);
