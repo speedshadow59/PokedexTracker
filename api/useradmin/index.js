@@ -18,105 +18,81 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Check admin role (copy full logic from checkadmin)
+        // Check admin role using the same logic as checkadmin
+        let userId = null;
         let roles = [];
         let lookedUp = false;
-        let userId = principal.userId;
         let email = principal.userDetails;
         let usersDebug = {};
         let appRoleAssignmentsDebug = null;
-
-        try {
-            roles = await getUserAppRoles(userId);
-        } catch (e) {
-            context.log('useradmin: direct role lookup failed, trying user lookup', e.message);
-            roles = [];
-        }
-
-        // If no roles found and we have email, try extensive user lookup like checkadmin
-        if ((!roles || !roles.length) && email) {
-            try {
-                const graphToken = await getGraphToken();
-                const encode = encodeURIComponent;
-
-                // 1. Try userPrincipalName eq email
-                let url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${encode(email)}'&$select=id,userPrincipalName`;
-                let res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
-                let data = res.ok ? await res.json() : null;
-                usersDebug.byEmail = data;
-
-                if (!(data && Array.isArray(data.value) && data.value.length)) {
-                    // 2. Try external UPN (B2B guest)
-                    let extUpn = email;
-                    if (email.includes('@')) {
-                        const match = email.match(/^([^@]+)@([^@]+)$/);
-                        if (match) {
-                            const local = match[1].replace(/\./g, '_');
-                            const domain = match[2].replace(/\./g, '_');
-                            extUpn = `${local}_${domain}#EXT#@lpielikysgmail.onmicrosoft.com`;
-                        }
-                    }
-                    url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${encode(extUpn)}'&$select=id,userPrincipalName`;
-                    res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
-                    data = res.ok ? await res.json() : null;
-                    usersDebug.byExtUpn = data;
-                }
-
-                if (!(data && Array.isArray(data.value) && data.value.length)) {
-                    // 3. Try mail eq email
-                    url = `https://graph.microsoft.com/v1.0/users?$filter=mail eq '${encode(email)}'&$select=id,userPrincipalName`;
-                    res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
-                    data = res.ok ? await res.json() : null;
-                    usersDebug.byMail = data;
-                }
-
-                if (!(data && Array.isArray(data.value) && data.value.length)) {
-                    // 4. Try otherMails/any(x:x eq email)
-                    url = `https://graph.microsoft.com/v1.0/users?$filter=otherMails/any(x:x eq '${encode(email)}')&$select=id,userPrincipalName`;
-                    res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
-                    data = res.ok ? await res.json() : null;
-                    usersDebug.byOtherMails = data;
-                }
-
-                if (!(data && Array.isArray(data.value) && data.value.length)) {
-                    // 5. Try startswith(userPrincipalName, local part)
-                    const local = email.split('@')[0];
-                    url = `https://graph.microsoft.com/v1.0/users?$filter=startswith(userPrincipalName,'${encode(local)}')&$select=id,userPrincipalName`;
-                    res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
-                    data = res.ok ? await res.json() : null;
-                    usersDebug.byStartsWith = data;
-                }
-
-                // Use first match found
-                let found = null;
-                for (const key of ['byEmail','byExtUpn','byMail','byOtherMails','byStartsWith']) {
-                    if (usersDebug[key] && Array.isArray(usersDebug[key].value) && usersDebug[key].value.length) {
-                        found = usersDebug[key].value[0];
-                        break;
+        if (email) {
+            const graphToken = await getGraphToken();
+            const encode = encodeURIComponent;
+            // 1. Try userPrincipalName eq email
+            let url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${encode(email)}'&$select=id,userPrincipalName`;
+            let res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+            let data = res.ok ? await res.json() : null;
+            usersDebug.byEmail = data;
+            if (!(data && Array.isArray(data.value) && data.value.length)) {
+                // 2. Try external UPN (B2B guest)
+                let extUpn = email;
+                if (email.includes('@')) {
+                    const match = email.match(/^([^@]+)@([^@]+)$/);
+                    if (match) {
+                        const local = match[1].replace(/\./g, '_');
+                        const domain = match[2].replace(/\./g, '_');
+                        extUpn = `${local}_${domain}#EXT#@lpielikysgmail.onmicrosoft.com`;
                     }
                 }
-
-                if (found) {
-                    userId = found.id;
-                    lookedUp = true;
-                    let appRoleUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userId)}/appRoleAssignments`;
-                    let appRoleRes = await fetch(appRoleUrl, { headers: { Authorization: `Bearer ${graphToken}` } });
-                    appRoleAssignmentsDebug = appRoleRes.ok ? await appRoleRes.json() : null;
-                    roles = await getUserAppRoles(userId);
+                url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${encode(extUpn)}'&$select=id,userPrincipalName`;
+                res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+                data = res.ok ? await res.json() : null;
+                usersDebug.byExtUpn = data;
+            }
+            if (!(data && Array.isArray(data.value) && data.value.length)) {
+                // 3. Try mail eq email
+                url = `https://graph.microsoft.com/v1.0/users?$filter=mail eq '${encode(email)}'&$select=id,userPrincipalName`;
+                res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+                data = res.ok ? await res.json() : null;
+                usersDebug.byMail = data;
+            }
+            if (!(data && Array.isArray(data.value) && data.value.length)) {
+                // 4. Try otherMails/any(x:x eq email)
+                url = `https://graph.microsoft.com/v1.0/users?$filter=otherMails/any(x:x eq '${encode(email)}')&$select=id,userPrincipalName`;
+                res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+                data = res.ok ? await res.json() : null;
+                usersDebug.byOtherMails = data;
+            }
+            if (!(data && Array.isArray(data.value) && data.value.length)) {
+                // 5. Try startswith(userPrincipalName, local part)
+                const local = email.split('@')[0];
+                url = `https://graph.microsoft.com/v1.0/users?$filter=startswith(userPrincipalName,'${encode(local)}')&$select=id,userPrincipalName`;
+                res = await fetch(url, { headers: { Authorization: `Bearer ${graphToken}` } });
+                data = res.ok ? await res.json() : null;
+                usersDebug.byStartsWith = data;
+            }
+            // Use first match found
+            let found = null;
+            for (const key of ['byEmail','byExtUpn','byMail','byOtherMails','byStartsWith']) {
+                if (usersDebug[key] && Array.isArray(usersDebug[key].value) && usersDebug[key].value.length) {
+                    found = usersDebug[key].value[0];
+                    break;
                 }
-            } catch (lookupError) {
-                context.log('useradmin: user lookup failed', lookupError.message);
-                roles = [];
+            }
+            if (found) {
+                userId = found.id;
+                lookedUp = true;
+                let appRoleUrl = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(userId)}/appRoleAssignments`;
+                let appRoleRes = await fetch(appRoleUrl, { headers: { Authorization: `Bearer ${graphToken}` } });
+                appRoleAssignmentsDebug = appRoleRes.ok ? await appRoleRes.json() : null;
+                roles = await getUserAppRoles(userId);
             }
         }
-
         const isAdmin = roles.includes('Admin');
-
         if (!isAdmin) {
             context.res = {
                 status: 403,
-                headers: { 'Content-Type': 'application/json' },
-                body: { error: 'Admin access required', isAdmin: false, debug: { roles, lookedUp, userId, email, usersDebug } }
+                body: { error: 'Admin access required' }
             };
             return;
         }
