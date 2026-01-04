@@ -193,7 +193,7 @@ module.exports = async function (context, req) {
         `Name: ${meta.name}`,
         meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
         doc.notes ? `Notes: ${doc.notes}` : null,
-        doc.caught ? 'Status: caught' : 'Status: not caught',
+        doc.caught ? 'Status: caught' : 'Status: uncaught',
         doc.shiny ? 'Shiny' : null,
         meta.region ? `Region: ${meta.region}` : null
       ].filter(Boolean);
