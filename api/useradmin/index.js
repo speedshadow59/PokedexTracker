@@ -113,7 +113,7 @@ module.exports = async function (context, req) {
                 context.log('useradmin: got graph token');
                 // Add timestamp for cache busting
                 const timestamp = Date.now();
-                const url = `https://graph.microsoft.com/v1.0/users?$top=500&$count=true&_=${timestamp}`;
+                const url = `https://graph.microsoft.com/v1.0/users?$top=500&$count=true&$select=id,displayName,userPrincipalName,mail,accountEnabled&_=${timestamp}`;
                 context.log('useradmin: fetch', url);
                 const res = await fetch(url, {
                     headers: {
@@ -139,7 +139,10 @@ module.exports = async function (context, req) {
                 let nextLink = data['@odata.nextLink'];
                 while (nextLink) {
                     context.log('useradmin: fetching next page', nextLink);
-                    const nextRes = await fetch(nextLink, {
+                    // Add select parameters to nextLink if not present
+                    const separator = nextLink.includes('?') ? '&' : '?';
+                    const paginatedUrl = `${nextLink}${separator}$select=id,displayName,userPrincipalName,mail,accountEnabled`;
+                    const nextRes = await fetch(paginatedUrl, {
                         headers: {
                             Authorization: `Bearer ${graphToken}`,
                             'ConsistencyLevel': 'eventual',
@@ -161,8 +164,11 @@ module.exports = async function (context, req) {
                 context.log('useradmin: total users fetched', allUsers.length);
                 // Map to expected frontend format
                 const users = allUsers.map(u => {
-                    const blocked = u.accountEnabled === false;
-                    context.log(`useradmin: user ${u.displayName || u.userPrincipalName} - accountEnabled: ${u.accountEnabled}, blocked: ${blocked}`);
+                    // accountEnabled can be true, false, or undefined/null
+                    const accountEnabled = u.accountEnabled;
+                    const blocked = accountEnabled === false || accountEnabled === null || accountEnabled === undefined;
+                    context.log(`useradmin: user ${u.displayName || u.userPrincipalName} - accountEnabled: ${accountEnabled} (type: ${typeof accountEnabled}), blocked: ${blocked}`);
+                    context.log(`useradmin: user object keys: ${Object.keys(u).join(', ')}`);
                     return {
                         id: u.id,
                         name: u.displayName || u.userPrincipalName || u.mail,
@@ -212,13 +218,17 @@ module.exports = async function (context, req) {
                     return;
                 }
                 const userData = await res.json();
+                context.log(`useradmin: getUser raw data - accountEnabled: ${userData.accountEnabled} (type: ${typeof userData.accountEnabled})`);
+                context.log(`useradmin: getUser object keys: ${Object.keys(userData).join(', ')}`);
                 const roles = await getUserAppRoles(req.body.userId);
+                const accountEnabled = userData.accountEnabled;
+                const blocked = accountEnabled === false || accountEnabled === null || accountEnabled === undefined;
                 const user = {
                     id: userData.id,
                     name: userData.displayName || userData.userPrincipalName || userData.mail,
                     email: userData.mail || userData.userPrincipalName,
                     isAdmin: roles.includes('Admin'),
-                    blocked: userData.accountEnabled === false
+                    blocked: blocked
                 };
                 context.log('useradmin: user fetched', user);
                 context.res = { status: 200, body: { user, rawGraph: userData } };
