@@ -197,52 +197,68 @@ module.exports = async function (context, req) {
 
     let items = [];
     if (!isAISearch) {
-      let collection;
+      let db;
       try {
-        const db = await connectToDatabase();
-        collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+        db = await connectToDatabase();
       } catch (err) {
         context.log.error('DB connection failed', err);
         context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed', details: err && err.stack } };
         return;
       }
+      const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      const pokedexCol = db.collection('pokedex');
 
-      const filter = { userId: principal.userId };
-      if (shinyFilter !== undefined) filter.shiny = shinyFilter;
-
-      let documents = [];
+      // Get all pokedex entries
+      let pokedexDocs = [];
       try {
-        documents = await collection.find(filter).limit(MAX_ITEMS).toArray();
+        pokedexDocs = await pokedexCol.find({}).limit(MAX_ITEMS).toArray();
+      } catch (err) {
+        context.log.error('Failed to query pokedex', err);
+        context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query pokedex', details: err && err.stack } };
+        return;
+      }
+
+      // Get userdex entries for this user
+      let userdexDocs = [];
+      try {
+        userdexDocs = await userdexCol.find({ userId: principal.userId }).limit(MAX_ITEMS).toArray();
       } catch (err) {
         context.log.error('Failed to query userdex', err);
         context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data', details: err && err.stack } };
         return;
       }
-
-      if (!documents.length) {
-        context.res = {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-          body: { query, count: 0, usedAI: false, results: [], message: 'No entries found for this user.' }
-        };
-        return;
+      // Map userdex by pokemonId for fast lookup
+      const userdexMap = {};
+      for (const doc of userdexDocs) {
+        userdexMap[doc.pokemonId] = doc;
       }
 
       const debugFilterInfo = [];
-      for (const doc of documents) {
-        const meta = await getPokemonMeta(doc.pokemonId);
+      for (const base of pokedexDocs) {
+        // Overlay userdex data if present
+        const doc = userdexMap[base.pokemonId] || {};
+        const meta = await getPokemonMeta(base.pokemonId);
+        // Region filter
         if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
           continue;
         }
+        // Caught filter
         let caughtCompare = true;
         if (caughtFilter !== undefined) {
           caughtCompare = Boolean(doc.caught) === Boolean(caughtFilter);
-          debugFilterInfo.push({ pokemonId: doc.pokemonId, docCaught: doc.caught, caughtFilter, compare: caughtCompare });
+          debugFilterInfo.push({ pokemonId: base.pokemonId, docCaught: doc.caught, caughtFilter, compare: caughtCompare });
           if (!caughtCompare) {
             continue;
           }
         }
-
+        // Shiny filter
+        let shinyCompare = true;
+        if (shinyFilter !== undefined) {
+          shinyCompare = Boolean(doc.shiny) === Boolean(shinyFilter);
+          if (!shinyCompare) {
+            continue;
+          }
+        }
         const textParts = [
           `Name: ${meta.name}`,
           meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
@@ -251,7 +267,6 @@ module.exports = async function (context, req) {
           doc.shiny ? 'Shiny' : null,
           meta.region ? `Region: ${meta.region}` : null
         ].filter(Boolean);
-
         items.push({
           pokemonId: meta.pokemonId,
           name: meta.name,
@@ -266,7 +281,6 @@ module.exports = async function (context, req) {
           embeddingText: textParts.join('. ')
         });
       }
-
       if (!items.length) {
         context.res = {
           status: 200,
