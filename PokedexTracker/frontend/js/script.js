@@ -335,6 +335,8 @@ function setupAdminDashboardTabs() {
         // Start polling after a brief initial delay
         setTimeout(poll, 500);
     }
+
+    async function loadAdminMedia() {
         const panel = document.getElementById('adminPanelMedia');
         panel.innerHTML = '<div>Loading media...</div>';
         try {
