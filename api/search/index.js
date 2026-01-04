@@ -80,6 +80,7 @@ module.exports = async function (context, req) {
     // --- AI Search Path ---
     if (aiSearchEnabled) {
       try {
+        // First, get AI search results from the index
         const url = `${searchConfig.endpoint}/indexes/${searchConfig.indexName}/docs/search?api-version=2023-11-01`;
         let searchQuery = query || '*';
         let queryType = 'simple';
@@ -103,7 +104,7 @@ module.exports = async function (context, req) {
           throw new Error(`Azure AI Search query failed: ${res.status} ${res.statusText} - ${text}`);
         }
         const data = await res.json();
-        let results = Array.isArray(data.value)
+        let aiResults = Array.isArray(data.value)
           ? data.value.map(doc => ({
               pokemonId: doc.pokemonId,
               name: doc.name || `pokemon-${doc.pokemonId}`,
@@ -111,20 +112,44 @@ module.exports = async function (context, req) {
               spriteShiny: doc.spriteShiny || doc.sprite,
               types: Array.isArray(doc.types) ? doc.types : [],
               region: doc.region || inferRegionFromDex(doc.pokemonId),
-              caught: !!doc.caught,
-              shiny: !!doc.shiny,
-              notes: doc.notes || '',
-              screenshot: doc.screenshot || null,
               similarity: doc['@search.score'] !== undefined ? Number(doc['@search.score'].toFixed(4)) : undefined
             }))
           : [];
 
-        // Apply filters to AI search results
-        // Note: AI search index only has pokedex data, so user-specific filters (caught, shiny, screenshot) cannot be applied
+        // Now query user data from Cosmos DB to merge with AI results
+        const db = await connectToDatabase();
+        const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+        const userdexDocs = await userdexCol.find({ userId: principal.userId }).toArray();
+        const userdexMap = {};
+        for (const doc of userdexDocs) {
+          userdexMap[doc.pokemonId] = doc;
+        }
+
+        // Merge AI results with user data
+        let results = aiResults.map(aiResult => {
+          const userData = userdexMap[aiResult.pokemonId] || {};
+          return {
+            pokemonId: aiResult.pokemonId,
+            name: aiResult.name,
+            sprite: aiResult.sprite,
+            spriteShiny: aiResult.spriteShiny,
+            types: aiResult.types,
+            region: aiResult.region,
+            caught: !!userData.caught,
+            shiny: !!userData.shiny,
+            notes: userData.notes || '',
+            screenshot: userData.screenshot || null,
+            similarity: aiResult.similarity
+          };
+        });
+
+        // Apply all filters (now that we have user data)
         results = results.filter(item => {
           const passesRegion = !regionFilter || item.region?.toLowerCase() === regionFilter;
-          // Cannot filter by caught, shiny, screenshot in AI search since index doesn't have user data
-          return passesRegion;
+          const passesCaught = caughtFilter === undefined || Boolean(item.caught) === Boolean(caughtFilter);
+          const passesShiny = shinyFilter === undefined || Boolean(item.shiny) === Boolean(shinyFilter);
+          const passesScreenshot = !screenshotFilter || item.screenshot;
+          return passesRegion && passesCaught && passesShiny && passesScreenshot;
         });
 
         context.res = {
@@ -134,9 +159,7 @@ module.exports = async function (context, req) {
             query,
             count: results.length,
             usedAI: true,
-            results,
-            note: (caughtFilter !== null || shinyFilter !== null || screenshotFilter) ?
-              'AI search only supports region filtering. User-specific filters (caught, shiny, screenshot) were ignored.' : undefined
+            results
           }
         };
       } catch (err) {

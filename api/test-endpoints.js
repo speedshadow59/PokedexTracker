@@ -33,7 +33,8 @@ const endpoints = [
   { name: 'pokedex', path: './pokedex/index.js' },
   { name: 'userdex', path: './userdex/index.js' },
   { name: 'comments', path: './comments/index.js' },
-  { name: 'media', path: './media/index.js' }
+  { name: 'media', path: './media/index.js' },
+  { name: 'search', path: './search/index.js' }
 ];
 
 let allPassed = true;

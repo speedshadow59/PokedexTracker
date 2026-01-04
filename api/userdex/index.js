@@ -37,7 +37,7 @@ module.exports = async function (context, req) {
     const userId = principal.userId;
     try {
       const db = await connectToDatabase();
-      const collection = db.collection('userdex');
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
       // Check if user already has a shareId
       const existingEntry = await collection.findOne({ userId: userId, shareId: { $exists: true, $ne: null } });
       let shareId = existingEntry && existingEntry.shareId ? existingEntry.shareId : uuidv4();
@@ -75,7 +75,7 @@ module.exports = async function (context, req) {
     const userId = principal.userId;
     try {
       const db = await connectToDatabase();
-      const collection = db.collection('userdex');
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
       const result = await collection.updateMany(
         { userId: userId },
         { $unset: { shareId: "" } }
@@ -110,7 +110,7 @@ module.exports = async function (context, req) {
     }
     try {
       const db = await connectToDatabase();
-      const collection = db.collection('userdex');
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
       const items = await collection.find({ shareId }).toArray();
       if (!items.length) {
         context.res = {
@@ -187,7 +187,7 @@ module.exports = async function (context, req) {
 
     try {
       const db = await connectToDatabase();
-      const collection = db.collection('userdex');
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
       const cursor = collection.find({ userId: userId }, { projection: { pokemonId: 1, caught: 1, shiny: 1, notes: 1, screenshot: 1, updatedAt: 1, createdAt: 1 } });
       const items = await cursor.toArray();
 
@@ -241,7 +241,7 @@ module.exports = async function (context, req) {
     try {
       // Connect to Cosmos DB
       const db = await connectToDatabase();
-      const collection = db.collection('userdex');
+      const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
 
       // First, fetch the document to get the screenshot URL
       const existingDoc = await collection.findOne({
@@ -369,7 +369,7 @@ module.exports = async function (context, req) {
   try {
     // Connect to Cosmos DB
     const db = await connectToDatabase();
-    const collection = db.collection('userdex');
+    const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
 
     // Check if entry exists
     const existingEntry = await collection.findOne({
@@ -383,45 +383,6 @@ module.exports = async function (context, req) {
     if (existingEntry) {
       // Toggle: If exists and caught is true, update. If caught is false/undefined, remove
       if (caught === false) {
-        // Delete the blob if it exists before removing the entry
-        if (existingEntry.screenshot) {
-          try {
-            const blobServiceClient = getBlobServiceClient();
-            const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
-            const containerClient = blobServiceClient.getContainerClient(containerName);
-            
-            // Extract blob name from URL (format: https://<account>.blob.core.windows.net/<container>/<blobName>?sas)
-            const blobUrl = existingEntry.screenshot.split('?')[0]; // Remove SAS token
-            const urlParts = blobUrl.split(`/${containerName}/`);
-            const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
-            
-            const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-            await blockBlobClient.deleteIfExists();
-            context.log(`Deleted blob on uncatch: ${blobName}`);
-          } catch (blobError) {
-            context.log.warn('Error deleting blob on uncatch (continuing with document delete):', blobError.message);
-          }
-        }
-
-        // Delete the shiny screenshot blob if it exists
-        if (existingEntry.screenshotShiny) {
-          try {
-            const blobServiceClient = getBlobServiceClient();
-            const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
-            const containerClient = blobServiceClient.getContainerClient(containerName);
-            
-            const blobUrl = existingEntry.screenshotShiny.split('?')[0];
-            const urlParts = blobUrl.split(`/${containerName}/`);
-            const blobName = urlParts.length > 1 ? urlParts[1] : blobUrl.split('/').pop();
-            
-            const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-            await blockBlobClient.deleteIfExists();
-            context.log(`Deleted shiny blob on uncatch: ${blobName}`);
-          } catch (blobError) {
-            context.log.warn('Error deleting shiny blob on uncatch (continuing with document delete):', blobError.message);
-          }
-        }
-
         // Remove entry (mark as uncaught)
         result = await collection.deleteOne({
           userId: userId,
