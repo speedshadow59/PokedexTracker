@@ -258,7 +258,8 @@ async function setUserRole(userId, role) {
     return { success: true, action: 'assigned', role: 'admin' };
   } else {
     // Remove Admin role - need to find existing assignment
-    const assignmentsUrl = `https://graph.microsoft.com/v1.0/appRoleAssignments?$filter=principalId eq '${userId}' and resourceId eq '${spId}'`;
+    // Fetch all assignments and filter in code to avoid OData type issues
+    const assignmentsUrl = `https://graph.microsoft.com/v1.0/appRoleAssignments`;
     const assignmentsRes = await fetch(assignmentsUrl, {
       headers: { Authorization: `Bearer ${graphToken}` }
     });
@@ -269,7 +270,11 @@ async function setUserRole(userId, role) {
     }
 
     const assignmentsData = await assignmentsRes.json();
-    const adminAssignment = assignmentsData.value.find(a => a.appRoleId === adminRoleId && a.resourceId === spId);
+    const adminAssignment = assignmentsData.value.find(a =>
+      a.principalId === userId &&
+      a.resourceId === spId &&
+      a.appRoleId === adminRoleId
+    );
 
     if (adminAssignment) {
       const deleteUrl = `https://graph.microsoft.com/v1.0/appRoleAssignments/${adminAssignment.id}`;
