@@ -503,7 +503,10 @@ module.exports = async function (context, req) {
             try {
                 const db = await connectToDatabase();
                 const auditlogCollection = db.collection('auditlog');
-                const logs = await auditlogCollection.find({}).sort({ timestamp: -1 }).limit(100).toArray();
+                const logs = await auditlogCollection.find({}).limit(100).toArray();
+                
+                // Sort in memory since Cosmos DB doesn't have timestamp index
+                logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
                 context.log('useradmin: getLogs found', logs.length, 'logs');
                 context.res = { status: 200, body: { logs } };
