@@ -1,4 +1,4 @@
-const { getBlobServiceClient, emitEvent, getClientPrincipal, generateBlobSasUrl } = require('../shared/utils');
+const { getBlobServiceClient, emitEvent, getClientPrincipal, getGraphToken, findUserByIdentifier } = require('../shared/utils');
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -27,7 +27,19 @@ module.exports = async function (context, req) {
     return;
   }
 
-  const userId = principal.userId;
+  // Resolve userId to Graph API id for consistent storage
+  let userId = principal.userId;
+  if (principal.userDetails) {
+    try {
+      const graphUser = await findUserByIdentifier(principal.userDetails);
+      if (graphUser) {
+        userId = graphUser.id;
+        context.log('media: resolved principal userId', principal.userId, 'to Graph id', userId);
+      }
+    } catch (err) {
+      context.log('media: error resolving userId', err.message);
+    }
+  }
   const { pokemonId, file, fileName, contentType } = req.body || {};
 
   // Validate required parameters
@@ -51,7 +63,9 @@ module.exports = async function (context, req) {
     const containerClient = blobServiceClient.getContainerClient(containerName);
     
     try {
-      await containerClient.createIfNotExists();
+      await containerClient.createIfNotExists({
+        access: 'blob' // Public read access for blobs
+      });
     } catch (error) {
       context.log('Container may already exist or error creating:', error.message);
     }
@@ -86,7 +100,6 @@ module.exports = async function (context, req) {
 
     // Get the URL of the uploaded blob
     const blobUrl = blockBlobClient.url;
-    const sasUrl = generateBlobSasUrl(blobUrl);
 
     // Emit Event Grid event
     await emitEvent(
@@ -96,7 +109,7 @@ module.exports = async function (context, req) {
         userId: userId,
         pokemonId: parseInt(pokemonId),
         blobName: blobName,
-        blobUrl: sasUrl || blobUrl,
+        blobUrl: blobUrl,
         fileSize: buffer.length,
         contentType: contentType || 'image/png',
         timestamp: new Date()
@@ -109,7 +122,7 @@ module.exports = async function (context, req) {
       body: {
         success: true,
         message: 'File uploaded successfully',
-        url: sasUrl || blobUrl,
+        url: blobUrl,
         blobName: blobName,
         pokemonId: parseInt(pokemonId)
       }
