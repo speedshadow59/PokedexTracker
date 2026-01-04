@@ -280,6 +280,17 @@ module.exports = async function (context, req) {
                         context.log('useradmin: sample userPokemon entry:', userPokemon[0]);
                     }
                     
+                    // Also check total documents in collection
+                    const totalDocs = await userdexCollection.countDocuments();
+                    context.log('useradmin: total documents in userdex collection:', totalDocs);
+                    
+                    // Try to find any documents with this userId regardless of caught status
+                    const anyUserDocs = await userdexCollection.find({ userId: userData.id }).limit(5).toArray();
+                    context.log('useradmin: any documents for this userId:', anyUserDocs.length);
+                    if (anyUserDocs.length > 0) {
+                        context.log('useradmin: sample user document:', anyUserDocs[0]);
+                    }
+                    
                     const totalCaught = userPokemon.length;
                     const shinyCaught = userPokemon.filter(p => p.shiny).length;
                     const screenshotsCount = userPokemon.filter(p => p.screenshot || p.screenshotShiny).length;
