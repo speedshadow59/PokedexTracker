@@ -272,7 +272,7 @@ async function setUserRole(userId, role) {
     const adminAssignment = assignmentsData.value.find(a => a.appRoleId === adminRoleId && a.resourceId === spId);
 
     if (adminAssignment) {
-      const deleteUrl = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments/${adminAssignment.id}`;
+      const deleteUrl = `https://graph.microsoft.com/v1.0/appRoleAssignments/${adminAssignment.id}`;
       const deleteRes = await fetch(deleteUrl, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${graphToken}` }
