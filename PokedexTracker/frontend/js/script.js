@@ -340,7 +340,7 @@ function setupAdminDashboardTabs() {
         const panel = document.getElementById('adminPanelAudit');
         panel.innerHTML = '<div>Loading audit logs...</div>';
         try {
-            const res = await fetch(`/api/useradmin?action=getLogs&page=${page}&pageSize=20`, { credentials: 'include' });
+            const res = await fetch(`/api/useradmin?action=getLogs&page=${page}&pageSize=5`, { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch audit logs');
             const data = await res.json();
             renderAdminAudit(panel, data.logs || [], data.pagination);
