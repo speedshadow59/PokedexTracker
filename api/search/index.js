@@ -1,5 +1,5 @@
-const { connectToDatabase, getClientPrincipal } = require('../shared/utils');
-const { REGIONS } = require('../shared/pokemonData');
+import { connectToDatabase, getClientPrincipal } from '../shared/utils.js';
+import { REGIONS } from '../shared/pokemonData.js';
 
 const MAX_ITEMS = 300;
 const DEFAULT_TOP_K = 20;
@@ -171,17 +171,23 @@ async function runAzureSearch(config, query, options, context) {
   }));
 }
 
-module.exports = async function (context, req) {
-    context.log('[DEBUG] search function invoked');
+export default async function (context, req) {
+  context.log('[DEBUG] search function invoked');
   try {
     const principal = getClientPrincipal(req);
     const searchConfig = getSearchConfig();
+    const query = (req.query.q || req.query.query || (req.body && req.body.query) || '').trim();
+    const regionFilter = (req.query.region || (req.body && req.body.region) || '').toLowerCase();
+    const caughtFilter = parseBoolean(req.query.caught ?? req.body?.caught);
+    const shinyFilter = parseBoolean(req.query.shiny ?? req.body?.shiny);
+    const screenshotFilter = req.query.screenshot === 'true' || req.body?.screenshot === true;
+    const topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
+    const topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
+    const aiSearchEnabled = searchConfig && (req.query.ai === 'true' || req.body?.ai === true);
+
     // --- AI Search Path ---
     if (aiSearchEnabled) {
-      let usedAI = false;
-      let results = [];
       try {
-        // Only pass the query string to Azure AI Search, filters handled separately
         let searchResults = await runAzureSearch(searchConfig, query, {
           userId: undefined,
           regionFilter,
@@ -189,23 +195,13 @@ module.exports = async function (context, req) {
           shinyFilter,
           topK
         }, context);
-        // If searching for 'caught' as a keyword, also include caught Pokémon
         if (query && query.toLowerCase() === 'caught') {
-          searchResults = searchResults.concat(
-            searchResults.filter(r => r.caught)
-          );
+          searchResults = searchResults.concat(searchResults.filter(r => r.caught));
         }
-        usedAI = true;
-        results = searchResults.slice(0, topK);
         context.res = {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
-          body: {
-            query,
-            count: results.length,
-            usedAI,
-            results
-          }
+          body: { query, count: searchResults.length, usedAI: true, results: searchResults.slice(0, topK) }
         };
       } catch (err) {
         context.log.error('[DEBUG] Azure AI Search error', err);
@@ -231,7 +227,6 @@ module.exports = async function (context, req) {
     const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
     const pokedexCol = db.collection('pokedex');
 
-    // Get all pokedex entries
     let pokedexDocs = [];
     try {
       pokedexDocs = await pokedexCol.find({}).limit(MAX_ITEMS).toArray();
@@ -241,7 +236,6 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Get userdex entries for this user
     let userdexDocs = [];
     try {
       userdexDocs = await userdexCol.find({ userId: principal.userId }).limit(MAX_ITEMS).toArray();
@@ -250,7 +244,6 @@ module.exports = async function (context, req) {
       context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data', details: err && err.stack } };
       return;
     }
-    // Map userdex by pokemonId for fast lookup
     const userdexMap = {};
     for (const doc of userdexDocs) {
       userdexMap[doc.pokemonId] = doc;
@@ -259,14 +252,11 @@ module.exports = async function (context, req) {
     const debugFilterInfo = [];
     let items = [];
     for (const base of pokedexDocs) {
-      // Overlay userdex data if present
       const doc = userdexMap[base.pokemonId] || {};
       const meta = await getPokemonMeta(base.pokemonId);
-      // Region filter
       if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
         continue;
       }
-      // Caught filter
       let caughtCompare = true;
       if (caughtFilter !== undefined) {
         caughtCompare = Boolean(doc.caught) === Boolean(caughtFilter);
@@ -275,7 +265,6 @@ module.exports = async function (context, req) {
           continue;
         }
       }
-      // Shiny filter
       let shinyCompare = true;
       if (shinyFilter !== undefined) {
         shinyCompare = Boolean(doc.shiny) === Boolean(shinyFilter);
@@ -283,7 +272,6 @@ module.exports = async function (context, req) {
           continue;
         }
       }
-      // Screenshot filter
       if (screenshotFilter && !doc.screenshot) {
         continue;
       }
@@ -318,7 +306,6 @@ module.exports = async function (context, req) {
       return;
     }
 
-    // Local keyword search
     const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
     scored.sort((a, b) => b.score - a.score);
     const results = scored.slice(0, topK).map(entry => ({
@@ -346,35 +333,12 @@ module.exports = async function (context, req) {
         results
       }
     };
-        types: entry.item.types,
-        region: entry.item.region,
-        caught: entry.item.caught,
-        shiny: entry.item.shiny,
-        notes: entry.item.notes,
-        screenshot: entry.item.screenshot,
-        similarity: Number(entry.score.toFixed(4))
-      }));
-    }
-
-    context.res = {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: {
-        query,
-        count: results.length,
-        total: items.length,
-        usedAI,
-        results
-      }
-    };
+    return;
   } catch (err) {
-    // Catch-all error handler for debugging
     context.res = {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
       body: { error: 'Unhandled error in search handler', details: err && err.stack }
     };
   }
-
-// (Removed unreachable duplicate logic)
 }
