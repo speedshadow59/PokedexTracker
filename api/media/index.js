@@ -58,9 +58,7 @@ module.exports = async function (context, req) {
       
       context.log('Creating container if not exists...');
       try {
-        await containerClient.createIfNotExists({
-          access: 'blob' // Public read access for blobs
-        });
+        await containerClient.createIfNotExists();
         context.log('Container created or already exists');
       } catch (error) {
         context.log('Container may already exist or error creating:', error.message);
