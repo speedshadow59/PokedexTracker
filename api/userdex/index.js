@@ -1,4 +1,4 @@
-const { connectToDatabase, emitEvent, getClientPrincipal, getBlobServiceClient, generateBlobSasUrl } = require('../shared/utils');
+const { connectToDatabase, emitEvent, getClientPrincipal, getBlobServiceClient, generateBlobSasUrl, getGraphToken, findUserByIdentifier } = require('../shared/utils');
 
 /**
  * GET /api/userdex - Retrieve all caught Pokémon for authenticated user
@@ -34,7 +34,19 @@ module.exports = async function (context, req) {
       };
       return;
     }
-    const userId = principal.userId;
+    let userId = principal.userId;
+    // Resolve userId to Graph API id
+    if (principal.userDetails) {
+      try {
+        const graphUser = await findUserByIdentifier(principal.userDetails);
+        if (graphUser) {
+          userId = graphUser.id;
+          context.log('userdex share: resolved principal userId', principal.userId, 'to Graph id', userId);
+        }
+      } catch (err) {
+        context.log('userdex share: error resolving userId', err.message);
+      }
+    }
     try {
       const db = await connectToDatabase();
       const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
@@ -181,12 +193,28 @@ module.exports = async function (context, req) {
   }
   const authenticatedUserId = principal.userId;
 
+  // Resolve userId to Graph API id for consistent storage/retrieval
+  let resolvedUserId = authenticatedUserId;
+  if (principal.userDetails) {
+    try {
+      const graphUser = await findUserByIdentifier(principal.userDetails);
+      if (graphUser) {
+        resolvedUserId = graphUser.id;
+        context.log('userdex: resolved principal userId', authenticatedUserId, 'to Graph id', resolvedUserId);
+      } else {
+        context.log('userdex: failed to resolve userId for', principal.userDetails, 'using principal userId');
+      }
+    } catch (err) {
+      context.log('userdex: error resolving userId', err.message, 'using principal userId');
+    }
+  }
+
   if (req.method === 'GET') {
     context.log('HTTP trigger function processed a GET request for userdex.');
-    const userId = authenticatedUserId;
+    const userId = resolvedUserId;
     const pokemonId = req.query.pokemonId ? parseInt(req.query.pokemonId) : null;
 
-    context.log('userdex GET: authenticatedUserId =', userId);
+    context.log('userdex GET: resolvedUserId =', userId);
     context.log('userdex GET: principal =', principal);
     context.log('userdex GET: query params =', req.query);
 
@@ -251,7 +279,7 @@ module.exports = async function (context, req) {
   if (req.method === 'DELETE') {
     context.log('HTTP trigger function processed a DELETE request for userdex.');
     const { pokemonId } = req.body || {};
-    const userId = authenticatedUserId;
+    const userId = resolvedUserId;
 
     context.log(`DELETE: userId=${userId}, pokemonId=${pokemonId}`);
 
@@ -380,9 +408,9 @@ module.exports = async function (context, req) {
   context.log('HTTP trigger function processed a PUT request for userdex.');
 
   const { pokemonId, caught, shiny, notes, screenshot, screenshotShiny } = req.body || {};
-  const userId = authenticatedUserId;
+  const userId = resolvedUserId;
 
-  context.log('userdex PUT: authenticatedUserId =', userId);
+  context.log('userdex PUT: resolvedUserId =', userId);
   context.log('userdex PUT: principal =', principal);
 
   // Validate required parameters
