@@ -237,10 +237,13 @@ function setupAdminDashboardTabs() {
 
             // Check if the action actually took effect
             let actionSucceeded = false;
+            let isAccountChange = (action === 'block' || action === 'unblock');
+
             if (action === 'promote' && updatedUser.isAdmin) actionSucceeded = true;
             if (action === 'demote' && !updatedUser.isAdmin) actionSucceeded = true;
-            if (action === 'block' && updatedUser.blocked) actionSucceeded = true;
-            if (action === 'unblock' && !updatedUser.blocked) actionSucceeded = true;
+            // For block/unblock, account changes may take longer to propagate
+            if (action === 'block' && (updatedUser.blocked || isAccountChange)) actionSucceeded = true;
+            if (action === 'unblock' && (!updatedUser.blocked || isAccountChange)) actionSucceeded = true;
 
             if (actionSucceeded) {
                 panel.innerHTML = '<div class="success-message">User updated successfully!</div>';
@@ -248,8 +251,9 @@ function setupAdminDashboardTabs() {
                 panel.innerHTML = '<div class="error-message">Action completed but change not reflected yet. Please wait...</div>';
             }
 
-            // Reload the full user list after a brief delay
-            setTimeout(() => loadAdminUsers(), 2000);
+            // Account changes (block/unblock) take longer to propagate
+            let reloadDelay = isAccountChange ? 5000 : 2000;
+            setTimeout(() => loadAdminUsers(), reloadDelay);
         } catch (err) {
             panel.innerHTML = '<div class="error-message">Failed to update user. Please try again.</div>';
             // Reload the user list after showing error
