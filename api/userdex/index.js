@@ -186,6 +186,10 @@ module.exports = async function (context, req) {
     const userId = authenticatedUserId;
     const pokemonId = req.query.pokemonId ? parseInt(req.query.pokemonId) : null;
 
+    context.log('userdex GET: authenticatedUserId =', userId);
+    context.log('userdex GET: principal =', principal);
+    context.log('userdex GET: query params =', req.query);
+
     try {
       const db = await connectToDatabase();
       const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
@@ -195,6 +199,12 @@ module.exports = async function (context, req) {
       }
       const cursor = collection.find(query, { projection: { pokemonId: 1, caught: 1, shiny: 1, notes: 1, screenshot: 1, updatedAt: 1, createdAt: 1 } });
       const items = await cursor.toArray();
+
+      context.log('userdex GET: query =', query);
+      context.log('userdex GET: found items count =', items.length);
+      if (items.length > 0) {
+        context.log('userdex GET: sample item =', items[0]);
+      }
 
       context.res = {
         status: 200,
