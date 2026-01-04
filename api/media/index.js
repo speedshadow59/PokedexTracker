@@ -1,4 +1,4 @@
-const { getBlobServiceClient, emitEvent, getClientPrincipal } = require('../shared/utils');
+const { getBlobServiceClient, emitEvent, getClientPrincipal, generateBlobSasUrl } = require('../shared/utils');
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -90,8 +90,8 @@ module.exports = async function (context, req) {
 
       await blockBlobClient.upload(buffer, buffer.length, uploadOptions);
 
-      // Get the URL of the uploaded blob
-      const blobUrl = blockBlobClient.url;
+      // Get the URL of the uploaded blob with SAS token for private access
+      const sasUrl = generateBlobSasUrl(blobUrl);
 
       // Emit Event Grid event
       await emitEvent(
@@ -101,7 +101,7 @@ module.exports = async function (context, req) {
           userId: userId,
           pokemonId: parseInt(pokemonId),
           blobName: blobName,
-          blobUrl: blobUrl,
+          blobUrl: sasUrl || blobUrl, // Use SAS URL for accessible URL
           fileSize: buffer.length,
           contentType: contentType || 'image/png',
           timestamp: new Date()
@@ -114,7 +114,7 @@ module.exports = async function (context, req) {
         body: {
           success: true,
           message: 'File uploaded successfully',
-          url: blobUrl,
+          url: sasUrl || blobUrl, // Use SAS URL if available, fallback to direct URL
           blobName: blobName,
           pokemonId: parseInt(pokemonId)
         }
