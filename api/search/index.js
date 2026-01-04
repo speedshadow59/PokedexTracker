@@ -176,7 +176,7 @@ async function runAzureSearch(config, query, options, context) {
 }
 
 module.exports = async function (context, req) {
-    context.log('[DEBUG] Handler start', { isAISearch, searchConfig });
+    context.log('[DEBUG] search function invoked');
   try {
     const principal = getClientPrincipal(req);
     const searchConfig = getSearchConfig();
@@ -354,69 +354,5 @@ module.exports = async function (context, req) {
     };
   }
 
-  let usedAI = false;
-  let results = [];
-
-  if (isAISearch) {
-    try {
-      const searchResults = await runAzureSearch(searchConfig, query, {
-        userId: undefined,
-        regionFilter,
-        caughtFilter,
-        shinyFilter,
-        topK
-      }, context);
-      usedAI = true;
-      results = searchResults.slice(0, topK);
-    } catch (err) {
-      context.log.error('[DEBUG] Azure AI Search error', err);
-      context.log.warn('Azure AI Search failed, falling back to keyword search', err.message);
-      // fallback to local keyword search
-      const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
-      scored.sort((a, b) => b.score - a.score);
-      results = scored.slice(0, topK).map(entry => ({
-        pokemonId: entry.item.pokemonId,
-        name: entry.item.name,
-        sprite: entry.item.sprite,
-        spriteShiny: entry.item.spriteShiny,
-        types: entry.item.types,
-        region: entry.item.region,
-        caught: entry.item.caught,
-        shiny: entry.item.shiny,
-        notes: entry.item.notes,
-        screenshot: entry.item.screenshot,
-        similarity: Number(entry.score.toFixed(4))
-      }));
-      usedAI = false;
-    }
-  } else {
-    // No AI search, always use local keyword search
-    const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
-    scored.sort((a, b) => b.score - a.score);
-    results = scored.slice(0, topK).map(entry => ({
-      pokemonId: entry.item.pokemonId,
-      name: entry.item.name,
-      sprite: entry.item.sprite,
-      spriteShiny: entry.item.spriteShiny,
-      types: entry.item.types,
-      region: entry.item.region,
-      caught: entry.item.caught,
-      shiny: entry.item.shiny,
-      notes: entry.item.notes,
-      screenshot: entry.item.screenshot,
-      similarity: Number(entry.score.toFixed(4))
-    }));
-  }
-
-  context.res = {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-    body: {
-      query,
-      count: results.length,
-      total: items.length,
-      usedAI,
-      results
-    }
-  };
-};
+// (Removed unreachable duplicate logic)
+}
