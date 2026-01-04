@@ -4,6 +4,11 @@ const checkAdmin = require('../checkadmin');
 
 module.exports = async function (context, req) {
     try {
+        console.log('=== CONTENT MODERATION FUNCTION STARTED ===');
+        console.log('Request method:', req.method);
+        console.log('Request query:', JSON.stringify(req.query));
+        console.log('Request body:', JSON.stringify(req.body));
+
         context.log('Content moderation function called with action:', req.query?.action || req.body?.action);
 
         // TEMPORARILY BYPASS ADMIN CHECK FOR DEBUGGING
@@ -13,6 +18,7 @@ module.exports = async function (context, req) {
         //     context.res = { status: 403, body: { error: 'Admin access required' } };
         //     return;
         // }
+        console.log('Admin check bypassed for debugging');
         context.log('Admin check bypassed for debugging');
 
         const action = req.query.action || (req.body && req.body.action);
@@ -21,15 +27,24 @@ module.exports = async function (context, req) {
             return;
         }
 
+        console.log('Connecting to database...');
         context.log('Connecting to database...');
         const db = await connectToDatabase();
+        console.log('Database connected successfully');
         context.log('Database connected successfully');
+
+        // Test database connection
+        const collections = await db.collections();
+        console.log('Available collections:', collections.map(c => c.collectionName));
+        context.log('Available collections:', collections.map(c => c.collectionName));
 
         // Content moderation actions
         if (action === 'listMedia') {
+            console.log('=== PROCESSING LISTMEDIA ACTION ===');
             context.log('Processing listMedia action');
             // Get all user screenshots from userdex collection
             const userdexCollection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+            console.log('Querying userdex collection for screenshots...');
             const screenshots = await userdexCollection.find({
                 $or: [
                     { screenshot: { $exists: true, $ne: null } },
@@ -37,6 +52,7 @@ module.exports = async function (context, req) {
                 ]
             }).toArray();
 
+            console.log(`Found ${screenshots.length} screenshot documents`);
             context.log(`Found ${screenshots.length} screenshot documents`);
 
             // Transform to media items
@@ -158,7 +174,13 @@ module.exports = async function (context, req) {
             body: {
                 error: 'Internal server error',
                 message: error.message,
-                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+                stack: error.stack,
+                details: {
+                    action: req.query?.action || req.body?.action,
+                    hasBody: !!req.body,
+                    bodyKeys: req.body ? Object.keys(req.body) : null,
+                    timestamp: new Date().toISOString()
+                }
             }
         };
     }
