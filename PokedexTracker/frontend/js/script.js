@@ -224,11 +224,16 @@ function setupAdminDashboardTabs() {
             });
             if (!res.ok) throw new Error('Failed to update user');
 
-            // Wait 10 seconds for the change to propagate, then refresh the list
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            // Show success message and reload immediately
+            panel.innerHTML = '<div class="success-message">User updated successfully! Reloading...</div>';
+
+            // Brief delay for Microsoft Graph propagation, then refresh
+            await new Promise(resolve => setTimeout(resolve, 1000));
             await loadAdminUsers();
         } catch (err) {
-            panel.innerHTML = '<div class="empty-state">Failed to update user.</div>';
+            panel.innerHTML = '<div class="error-message">Failed to update user. Please try again.</div>';
+            // Reload the user list after showing error
+            setTimeout(() => loadAdminUsers(), 2000);
         }
     }
 
