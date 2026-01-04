@@ -48,16 +48,20 @@ module.exports = async function (context, req) {
 
     try {
       // Get Blob Service Client
+      context.log('Getting blob service client...');
       const blobServiceClient = getBlobServiceClient();
       const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
+      context.log(`Container name: ${containerName}`);
       
       // Get container client (create container if it doesn't exist)
       const containerClient = blobServiceClient.getContainerClient(containerName);
       
+      context.log('Creating container if not exists...');
       try {
         await containerClient.createIfNotExists({
           access: 'blob' // Public read access for blobs
         });
+        context.log('Container created or already exists');
       } catch (error) {
         context.log('Container may already exist or error creating:', error.message);
       }
@@ -65,23 +69,28 @@ module.exports = async function (context, req) {
       // Generate unique blob name
       const fileExtension = fileName ? fileName.split('.').pop() : 'png';
       const blobName = `${userId}/${pokemonId}/${uuidv4()}.${fileExtension}`;
+      context.log(`Generated blob name: ${blobName}`);
       
       // Get blob client
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
       // Convert base64 to buffer if needed
+      context.log('Converting file to buffer...');
       let buffer;
       if (typeof file === 'string') {
         // Remove data URL prefix if present (e.g., "data:image/png;base64,")
         const base64Data = file.replace(/^data:image\/\w+;base64,/, '');
         buffer = Buffer.from(base64Data, 'base64');
+        context.log(`Buffer created from base64 string, length: ${buffer.length}`);
       } else if (Buffer.isBuffer(file)) {
         buffer = file;
+        context.log(`Using provided buffer, length: ${buffer.length}`);
       } else {
         throw new Error('Invalid file format. Expected base64 string or Buffer');
       }
 
       // Upload to blob storage
+      context.log('Uploading to blob storage...');
       const uploadOptions = {
         blobHTTPHeaders: {
           blobContentType: contentType || 'image/png'
@@ -89,11 +98,16 @@ module.exports = async function (context, req) {
       };
 
       await blockBlobClient.upload(buffer, buffer.length, uploadOptions);
+      context.log('Upload successful');
 
       // Get the URL of the uploaded blob with SAS token for private access
+      const blobUrl = blockBlobClient.url;
+      context.log(`Blob URL: ${blobUrl}`);
       const sasUrl = generateBlobSasUrl(blobUrl);
+      context.log(`SAS URL generated: ${!!sasUrl}`);
 
       // Emit Event Grid event
+      context.log('Emitting event...');
       await emitEvent(
         'PokedexTracker.Media.Uploaded',
         `media/${userId}/${pokemonId}`,
@@ -107,6 +121,7 @@ module.exports = async function (context, req) {
           timestamp: new Date()
         }
       );
+      context.log('Event emitted');
 
       context.res = {
         status: 201,
