@@ -207,7 +207,9 @@ module.exports = async function (context, req) {
     }
     const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
     scored.sort((a, b) => b.score - a.score);
-    const results = scored.slice(0, topK).map(entry => ({
+    // Only return items with a score > 0 (relevant matches)
+    const relevantResults = scored.filter(entry => entry.score > 0);
+    const results = relevantResults.slice(0, topK).map(entry => ({
       pokemonId: entry.item.pokemonId,
       name: entry.item.name,
       sprite: entry.item.sprite,
@@ -223,7 +225,7 @@ module.exports = async function (context, req) {
     context.res = {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: { query, count: results.length, total: items.length, usedAI: false, results }
+      body: { query, count: results.length, total: relevantResults.length, usedAI: false, results }
     };
     return;
   } catch (err) {
