@@ -207,31 +207,9 @@ function setupAdminDashboardTabs() {
             });
             if (!res.ok) throw new Error('Failed to update user');
 
-            // Poll until the user's status actually changes, or timeout after 30s
-            const pollInterval = 1000;
-            const timeout = 30000;
-            const start = Date.now();
-            let lastStatus = null;
-            let changed = false;
-            while (Date.now() - start < timeout) {
-                const usersRes = await fetch('/api/checkadmin?action=listUsers', { credentials: 'include' });
-                if (!usersRes.ok) break;
-                const data = await usersRes.json();
-                const user = (data.users || []).find(u => u.id === userId);
-                if (!user) break;
-                // Determine if the relevant status has changed
-                if (action === 'promote' && user.isAdmin) { changed = true; break; }
-                if (action === 'demote' && !user.isAdmin) { changed = true; break; }
-                if (action === 'block' && user.blocked) { changed = true; break; }
-                if (action === 'unblock' && !user.blocked) { changed = true; break; }
-                lastStatus = { isAdmin: user.isAdmin, blocked: user.blocked };
-                await new Promise(resolve => setTimeout(resolve, pollInterval));
-            }
-            if (changed) {
-                await loadAdminUsers();
-            } else {
-                panel.innerHTML = '<div class="empty-state">Update may have failed or is taking longer. Please refresh.</div>';
-            }
+            // Wait 10 seconds for the change to propagate, then refresh the list
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            await loadAdminUsers();
         } catch (err) {
             panel.innerHTML = '<div class="empty-state">Failed to update user.</div>';
         }
