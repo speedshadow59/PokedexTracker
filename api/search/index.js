@@ -66,7 +66,6 @@ function parseBoolean(value) {
 
 module.exports = async function (context, req) {
   try {
-    context.log('[DEBUG] search function invoked');
     const principal = getClientPrincipal(req);
     const searchConfig = getSearchConfig();
     const query = (req.query.q || req.query.query || (req.body && req.body.query) || '').trim();
@@ -121,9 +120,10 @@ module.exports = async function (context, req) {
               notes: doc.notes || '',
               screenshot: doc.screenshot || null,
               similarity: doc['@search.score'] !== undefined ? Number(doc['@search.score'].toFixed(4)) : undefined
-            })
-          )
+            }))
           : [];
+
+
         context.res = {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
