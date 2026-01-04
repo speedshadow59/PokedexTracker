@@ -219,7 +219,7 @@ function setupAdminDashboardTabs() {
         const panel = document.getElementById('adminPanelMedia');
         panel.innerHTML = '<div>Loading media...</div>';
         try {
-            const res = await fetch('/api/contentmoderation?action=listMedia', { credentials: 'include' });
+            const res = await fetch('/api/useradmin?action=listMedia', { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch media');
             const data = await res.json();
             renderAdminMedia(panel, data.media || []);
@@ -272,7 +272,7 @@ function setupAdminDashboardTabs() {
         panel.innerHTML = '<div>Deleting screenshot...</div>';
         
         try {
-            const res = await fetch('/api/contentmoderation?action=deleteScreenshot', {
+            const res = await fetch('/api/useradmin?action=deleteScreenshot', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
