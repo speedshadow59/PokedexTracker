@@ -259,7 +259,7 @@ function setupAdminDashboardTabs() {
 
             if (actionSucceeded) {
                 if (isAccountChange) {
-                    panel.innerHTML = '<div class="success-message">User account status updated! Changes may take up to 60 seconds to appear in the list. <button onclick="loadAdminUsers()" class="refresh-btn">Refresh Now</button></div>';
+                    panel.innerHTML = '<div class="success-message">User account status updated! Changes should appear in the list within 20 seconds. <button onclick="loadAdminUsers()" class="refresh-btn">Refresh Now</button></div>';
                 } else {
                     panel.innerHTML = '<div class="success-message">User updated successfully!</div>';
                 }
@@ -267,21 +267,9 @@ function setupAdminDashboardTabs() {
                 panel.innerHTML = '<div class="error-message">Action completed but change not reflected yet. Please wait...</div>';
             }
 
-            // Account changes (block/unblock) take longer to propagate
-            let reloadDelay = isAccountChange ? 20000 : 2000; // Increased from 10s to 20s for account changes
-            setTimeout(() => loadAdminUsers(), reloadDelay);
-            
-            // For account changes, also refresh again after additional delays in case propagation is slow
+            // For account changes, use smart polling to detect when change takes effect
             if (isAccountChange) {
-                setTimeout(() => {
-                    console.log('Refreshing user list again for account change (30s)...');
-                    loadAdminUsers();
-                }, 30000); // Additional refresh at 30 seconds
-                
-                setTimeout(() => {
-                    console.log('Final refresh for account change (60s)...');
-                    loadAdminUsers();
-                }, 60000); // Final refresh at 60 seconds
+                smartPollForAccountChange(userId, action);
             }
         } catch (err) {
             panel.innerHTML = '<div class="error-message">Failed to update user. Please try again.</div>';
@@ -290,7 +278,52 @@ function setupAdminDashboardTabs() {
         }
     }
 
-    async function loadAdminMedia() {
+    async function smartPollForAccountChange(userId, action) {
+        const expectedBlocked = (action === 'block');
+        const maxAttempts = 20; // 20 seconds max
+        const pollInterval = 1000; // Check every 1 second
+        let attempts = 0;
+
+        console.log(`Starting smart poll for ${action} operation on user ${userId}, expecting blocked=${expectedBlocked}`);
+
+        const poll = async () => {
+            attempts++;
+            try {
+                const timestamp = Date.now();
+                const res = await fetch(`/api/useradmin?action=getUser&_t=${timestamp}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ userId, action: 'getUser' })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const currentBlocked = data.user.blocked;
+
+                    console.log(`Poll attempt ${attempts}: user blocked=${currentBlocked}, expected=${expectedBlocked}`);
+
+                    if (currentBlocked === expectedBlocked) {
+                        console.log('Account change detected! Refreshing user list...');
+                        loadAdminUsers();
+                        return; // Success, stop polling
+                    }
+                }
+            } catch (err) {
+                console.log(`Poll attempt ${attempts} failed:`, err.message);
+            }
+
+            if (attempts < maxAttempts) {
+                setTimeout(poll, pollInterval);
+            } else {
+                console.log('Max polling attempts reached, doing final refresh');
+                loadAdminUsers(); // Final refresh even if change wasn't detected
+            }
+        };
+
+        // Start polling after a brief initial delay
+        setTimeout(poll, 1000);
+    }
         const panel = document.getElementById('adminPanelMedia');
         panel.innerHTML = '<div>Loading media...</div>';
         try {
