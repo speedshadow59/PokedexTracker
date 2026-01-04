@@ -186,76 +186,78 @@ module.exports = async function (context, req) {
   const topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
   const topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
 
-  let collection;
-  try {
-    const db = await connectToDatabase();
-    collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-  } catch (err) {
-    context.log.error('DB connection failed', err);
-    context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed' } };
-    return;
-  }
-
-  const filter = { userId: principal.userId };
-  if (caughtFilter !== undefined) filter.caught = caughtFilter;
-  if (shinyFilter !== undefined) filter.shiny = shinyFilter;
-
-  let documents = [];
-  try {
-    documents = await collection.find(filter).limit(MAX_ITEMS).toArray();
-  } catch (err) {
-    context.log.error('Failed to query userdex', err);
-    context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data' } };
-    return;
-  }
-
-  if (!documents.length) {
-    context.res = {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: { query, count: 0, usedAI: false, results: [], message: 'No entries found for this user.' }
-    };
-    return;
-  }
-
-  const items = [];
-  for (const doc of documents) {
-    const meta = await getPokemonMeta(doc.pokemonId);
-    if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
-      continue;
+  let items = [];
+  if (!isAISearch) {
+    let collection;
+    try {
+      const db = await connectToDatabase();
+      collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+    } catch (err) {
+      context.log.error('DB connection failed', err);
+      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed' } };
+      return;
     }
 
-    const textParts = [
-      `Name: ${meta.name}`,
-      meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
-      doc.notes ? `Notes: ${doc.notes}` : null,
-      doc.caught ? 'Status: caught' : 'Status: not caught',
-      doc.shiny ? 'Shiny' : null,
-      meta.region ? `Region: ${meta.region}` : null
-    ].filter(Boolean);
+    const filter = { userId: principal.userId };
+    if (caughtFilter !== undefined) filter.caught = caughtFilter;
+    if (shinyFilter !== undefined) filter.shiny = shinyFilter;
 
-    items.push({
-      pokemonId: meta.pokemonId,
-      name: meta.name,
-      sprite: meta.sprite,
-      spriteShiny: meta.spriteShiny,
-      types: meta.types,
-      region: meta.region,
-      caught: !!doc.caught,
-      shiny: !!doc.shiny,
-      notes: doc.notes || '',
-      screenshot: doc.screenshot || null,
-      embeddingText: textParts.join('. ')
-    });
-  }
+    let documents = [];
+    try {
+      documents = await collection.find(filter).limit(MAX_ITEMS).toArray();
+    } catch (err) {
+      context.log.error('Failed to query userdex', err);
+      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data' } };
+      return;
+    }
 
-  if (!items.length) {
-    context.res = {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: { query, count: 0, usedAI: false, results: [], message: 'No items matched the provided filters.' }
-    };
-    return;
+    if (!documents.length) {
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: { query, count: 0, usedAI: false, results: [], message: 'No entries found for this user.' }
+      };
+      return;
+    }
+
+    for (const doc of documents) {
+      const meta = await getPokemonMeta(doc.pokemonId);
+      if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
+        continue;
+      }
+
+      const textParts = [
+        `Name: ${meta.name}`,
+        meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
+        doc.notes ? `Notes: ${doc.notes}` : null,
+        doc.caught ? 'Status: caught' : 'Status: not caught',
+        doc.shiny ? 'Shiny' : null,
+        meta.region ? `Region: ${meta.region}` : null
+      ].filter(Boolean);
+
+      items.push({
+        pokemonId: meta.pokemonId,
+        name: meta.name,
+        sprite: meta.sprite,
+        spriteShiny: meta.spriteShiny,
+        types: meta.types,
+        region: meta.region,
+        caught: !!doc.caught,
+        shiny: !!doc.shiny,
+        notes: doc.notes || '',
+        screenshot: doc.screenshot || null,
+        embeddingText: textParts.join('. ')
+      });
+    }
+
+    if (!items.length) {
+      context.res = {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: { query, count: 0, usedAI: false, results: [], message: 'No items matched the provided filters.' }
+      };
+      return;
+    }
   }
 
   let usedAI = false;
