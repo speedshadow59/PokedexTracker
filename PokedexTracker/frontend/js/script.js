@@ -656,9 +656,6 @@ function setupEventListeners() {
 function filterPokemonBySearch(e) {
     const rawSearch = e.target.value;
     const searchTerm = rawSearch.trim();
-    // Example: get caught filter from a checkbox or UI element
-    const caughtCheckbox = document.getElementById('caughtFilter');
-    const caughtFilter = caughtCheckbox ? caughtCheckbox.checked : undefined;
 
     if (!searchTerm) {
         // Clear search results to show all Pokemon
@@ -670,50 +667,57 @@ function filterPokemonBySearch(e) {
         return;
     }
 
-    // Always call backend search
-    let url = `${window.APP_CONFIG.API_BASE_URL}/search?q=${encodeURIComponent(searchTerm)}`;
-    if (caughtFilter !== undefined) url += `&caught=${caughtFilter}`;
-    url += `&topK=30`;
+    if (aiSearchEnabled) {
+        runAISearch(searchTerm);
+    } else {
+        // Local search
+        const caughtCheckbox = document.getElementById('caughtFilter');
+        const caughtFilter = caughtCheckbox ? caughtCheckbox.checked : undefined;
 
-    fetch(url, { method: 'GET', credentials: 'include' })
-        .then(response => response.json())
-        .then(data => {
-            const results = Array.isArray(data.results) ? data.results : [];
-            currentSearchResults = results.map(r => ({
-                id: r.pokemonId,
-                name: r.name || `pokemon-${r.pokemonId}`,
-                sprite: r.sprite,
-                spriteShiny: r.spriteShiny || r.sprite,
-                types: Array.isArray(r.types) && r.types.length ? r.types : ['unknown'],
-                region: r.region || null,
-                caught: !!r.caught,
-                shiny: !!r.shiny,
-                notes: r.notes || ''
-            }));
-            renderPokemonGrid();
-            updateProgress(currentSearchResults);
-            if (!currentSearchResults.length) {
-                let emptyMsg = document.getElementById('searchEmpty');
-                if (!emptyMsg) {
-                    emptyMsg = document.createElement('div');
-                    emptyMsg.id = 'searchEmpty';
-                    emptyMsg.className = 'empty-state';
-                    emptyMsg.innerHTML = '<p>No Pokémon found matching your search.</p>';
-                    document.getElementById('pokemonGrid').after(emptyMsg);
+        let url = `${window.APP_CONFIG.API_BASE_URL}/search?q=${encodeURIComponent(searchTerm)}`;
+        if (caughtFilter !== undefined) url += `&caught=${caughtFilter}`;
+        url += `&topK=30`;
+
+        fetch(url, { method: 'GET', credentials: 'include' })
+            .then(response => response.json())
+            .then(data => {
+                const results = Array.isArray(data.results) ? data.results : [];
+                currentSearchResults = results.map(r => ({
+                    id: r.pokemonId,
+                    name: r.name || `pokemon-${r.pokemonId}`,
+                    sprite: r.sprite,
+                    spriteShiny: r.spriteShiny || r.sprite,
+                    types: Array.isArray(r.types) && r.types.length ? r.types : ['unknown'],
+                    region: r.region || null,
+                    caught: !!r.caught,
+                    shiny: !!r.shiny,
+                    notes: r.notes || ''
+                }));
+                renderPokemonGrid();
+                updateProgress(currentSearchResults);
+                if (!currentSearchResults.length) {
+                    let emptyMsg = document.getElementById('searchEmpty');
+                    if (!emptyMsg) {
+                        emptyMsg = document.createElement('div');
+                        emptyMsg.id = 'searchEmpty';
+                        emptyMsg.className = 'empty-state';
+                        emptyMsg.innerHTML = '<p>No Pokémon found matching your search.</p>';
+                        document.getElementById('pokemonGrid').after(emptyMsg);
+                    }
+                    emptyMsg.style.display = 'block';
+                } else {
+                    const emptyMsg = document.getElementById('searchEmpty');
+                    if (emptyMsg) emptyMsg.style.display = 'none';
                 }
-                emptyMsg.style.display = 'block';
-            } else {
-                const emptyMsg = document.getElementById('searchEmpty');
-                if (emptyMsg) emptyMsg.style.display = 'none';
-            }
-        })
-        .catch(err => {
-            console.error('Search failed', err);
-            showToast('Search unavailable.', 'warning');
-            currentSearchResults = null;
-            renderPokemonGrid();
-            updateProgress();
-        });
+            })
+            .catch(err => {
+                console.error('Search failed', err);
+                showToast('Search unavailable.', 'warning');
+                currentSearchResults = null;
+                renderPokemonGrid();
+                updateProgress();
+            });
+    }
 }
 
 function updateAISearchStatus(text) {
@@ -764,7 +768,7 @@ async function runAISearch(searchTerm) {
     updateAISearchStatus('Searching...');
 
     try {
-        const url = `${window.APP_CONFIG.API_BASE_URL}/search?q=${encodeURIComponent(query)}&topK=30`;
+        const url = `${window.APP_CONFIG.API_BASE_URL}/search?q=${encodeURIComponent(query)}&ai=true&topK=30`;
         const response = await fetch(url, { method: 'GET', credentials: 'include' });
 
         if (response.status === 401) {
