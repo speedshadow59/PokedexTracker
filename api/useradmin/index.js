@@ -338,7 +338,20 @@ module.exports = async function (context, req) {
                     pokemonStats
                 };
                 context.log('useradmin: user fetched', user);
-                context.res = { status: 200, body: { user, rawGraph: userData } };
+                context.res = { 
+                    status: 200, 
+                    body: { 
+                        user, 
+                        rawGraph: userData,
+                        debug: {
+                            requestedUserId: req.body.userId,
+                            resolvedUserId: userData.id,
+                            pokemonQuery: { userId: userData.id, caught: true },
+                            totalDocsInCollection: await userdexCollection.countDocuments(),
+                            docsForUser: await userdexCollection.find({ userId: userData.id }).limit(3).toArray()
+                        }
+                    } 
+                };
                 return;
             } catch (err) {
                 context.log('useradmin: exception', err && err.message, err && err.stack);
