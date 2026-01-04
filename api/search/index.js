@@ -239,10 +239,6 @@ module.exports = async function (context, req) {
       const meta = await getPokemonMeta(base.pokemonId);
       // Use types from AI search index if available, otherwise from PokeAPI
       const types = typesMap[base.pokemonId] || meta.types || [];
-      if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) continue;
-      if (caughtFilter !== undefined && Boolean(doc.caught) !== Boolean(caughtFilter)) continue;
-      if (shinyFilter !== undefined && Boolean(doc.shiny) !== Boolean(shinyFilter)) continue;
-      if (screenshotFilter && !doc.screenshot) continue;
       const textParts = [
         `Name: ${meta.name}`,
         types && types.length ? `Types: ${types.join(', ')}` : null,
@@ -265,6 +261,16 @@ module.exports = async function (context, req) {
         embeddingText: textParts.join('. ')
       });
     }
+
+    // Apply filters to items (same logic as AI search)
+    items = items.filter(item => {
+      const passesRegion = !regionFilter || item.region?.toLowerCase() === regionFilter;
+      const passesCaught = caughtFilter === undefined || Boolean(item.caught) === Boolean(caughtFilter);
+      const passesShiny = shinyFilter === undefined || Boolean(item.shiny) === Boolean(shinyFilter);
+      const passesScreenshot = !screenshotFilter || item.screenshot;
+      return passesRegion && passesCaught && passesShiny && passesScreenshot;
+    });
+
     if (!items.length) {
       context.res = {
         status: 200,
