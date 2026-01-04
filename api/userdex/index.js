@@ -184,11 +184,16 @@ module.exports = async function (context, req) {
   if (req.method === 'GET') {
     context.log('HTTP trigger function processed a GET request for userdex.');
     const userId = authenticatedUserId;
+    const pokemonId = req.query.pokemonId ? parseInt(req.query.pokemonId) : null;
 
     try {
       const db = await connectToDatabase();
       const collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-      const cursor = collection.find({ userId: userId }, { projection: { pokemonId: 1, caught: 1, shiny: 1, notes: 1, screenshot: 1, updatedAt: 1, createdAt: 1 } });
+      const query = { userId: userId };
+      if (pokemonId) {
+        query.pokemonId = pokemonId;
+      }
+      const cursor = collection.find(query, { projection: { pokemonId: 1, caught: 1, shiny: 1, notes: 1, screenshot: 1, updatedAt: 1, createdAt: 1 } });
       const items = await cursor.toArray();
 
       context.res = {
