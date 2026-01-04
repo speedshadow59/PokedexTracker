@@ -261,16 +261,14 @@ function setupAdminDashboardTabs() {
                 if (isAccountChange) {
                     panel.innerHTML = '<div class="success-message">User account status updated! Changes should appear in the list within 20 seconds. <button onclick="loadAdminUsers()" class="refresh-btn">Refresh Now</button></div>';
                 } else {
-                    panel.innerHTML = '<div class="success-message">User updated successfully!</div>';
+                    panel.innerHTML = '<div class="success-message">User role updated! Changes should appear in the list within 10 seconds. <button onclick="loadAdminUsers()" class="refresh-btn">Refresh Now</button></div>';
                 }
             } else {
                 panel.innerHTML = '<div class="error-message">Action completed but change not reflected yet. Please wait...</div>';
             }
 
-            // For account changes, use smart polling to detect when change takes effect
-            if (isAccountChange) {
-                smartPollForAccountChange(userId, action);
-            }
+            // Use smart polling to detect when change takes effect for both account and role changes
+            smartPollForChange(userId, action, isAccountChange);
         } catch (err) {
             panel.innerHTML = '<div class="error-message">Failed to update user. Please try again.</div>';
             // Reload the user list after showing error
@@ -278,13 +276,19 @@ function setupAdminDashboardTabs() {
         }
     }
 
-    async function smartPollForAccountChange(userId, action) {
-        const expectedBlocked = (action === 'block');
-        const maxAttempts = 20; // 20 seconds max
+    async function smartPollForChange(userId, action, isAccountChange) {
+        const isRoleChange = !isAccountChange;
+        const expectedBlocked = isAccountChange ? (action === 'block') : undefined;
+        const expectedAdmin = isRoleChange ? (action === 'promote') : undefined;
+        const maxAttempts = isAccountChange ? 20 : 10; // 20s for account changes, 10s for role changes
         const pollInterval = 1000; // Check every 1 second
         let attempts = 0;
 
-        console.log(`Starting smart poll for ${action} operation on user ${userId}, expecting blocked=${expectedBlocked}`);
+        console.log(`Starting smart poll for ${action} operation on user ${userId}`, {
+            isAccountChange,
+            expectedBlocked,
+            expectedAdmin
+        });
 
         const poll = async () => {
             attempts++;
@@ -299,12 +303,19 @@ function setupAdminDashboardTabs() {
 
                 if (res.ok) {
                     const data = await res.json();
-                    const currentBlocked = data.user.blocked;
+                    const user = data.user;
+                    let changeDetected = false;
 
-                    console.log(`Poll attempt ${attempts}: user blocked=${currentBlocked}, expected=${expectedBlocked}`);
+                    if (isAccountChange) {
+                        changeDetected = (user.blocked === expectedBlocked);
+                        console.log(`Poll attempt ${attempts}: account blocked=${user.blocked}, expected=${expectedBlocked}, detected=${changeDetected}`);
+                    } else if (isRoleChange) {
+                        changeDetected = (user.isAdmin === expectedAdmin);
+                        console.log(`Poll attempt ${attempts}: role isAdmin=${user.isAdmin}, expected=${expectedAdmin}, detected=${changeDetected}`);
+                    }
 
-                    if (currentBlocked === expectedBlocked) {
-                        console.log('Account change detected! Refreshing user list...');
+                    if (changeDetected) {
+                        console.log('Change detected! Refreshing user list...');
                         loadAdminUsers();
                         return; // Success, stop polling
                     }
@@ -322,7 +333,7 @@ function setupAdminDashboardTabs() {
         };
 
         // Start polling after a brief initial delay
-        setTimeout(poll, 1000);
+        setTimeout(poll, 500);
     }
         const panel = document.getElementById('adminPanelMedia');
         panel.innerHTML = '<div>Loading media...</div>';
