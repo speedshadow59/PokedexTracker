@@ -1622,6 +1622,7 @@ async function syncPokemonToBackend(pokemonId, pokemonData) {
     }
     try {
         const userId = getUserId();
+        console.log('syncPokemonToBackend: syncing pokemon', pokemonId, 'for user', userId);
         
         // Prepare request body
         const requestBody = {
@@ -1643,6 +1644,8 @@ async function syncPokemonToBackend(pokemonId, pokemonData) {
             requestBody.screenshot = pokemonData.screenshot;
         }
         
+        console.log('syncPokemonToBackend: sending request', requestBody);
+        
         // Call backend API to save Pokemon data
         const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
             method: 'PUT',
@@ -1650,12 +1653,19 @@ async function syncPokemonToBackend(pokemonId, pokemonData) {
             body: JSON.stringify(requestBody)
         });
         
+        console.log('syncPokemonToBackend: response status', response.status);
+        
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('syncPokemonToBackend: failed to sync', errorText);
             showToast('Failed to sync to cloud. Check your connection.', 'error');
         } else {
+            const responseData = await response.json();
+            console.log('syncPokemonToBackend: sync successful', responseData);
             showToast('Synced to cloud!', 'success');
         }
     } catch (error) {
+        console.error('syncPokemonToBackend: exception', error);
         showToast('Network error—data saved locally.', 'warning');
         // Continue anyway - local storage will preserve the data
     }
