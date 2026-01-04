@@ -123,20 +123,25 @@ module.exports = async function (context, req) {
             }))
           : [];
 
-        // Apply filters to AI search results (same as local search)
+        // Apply filters to AI search results
+        // Note: AI search index only has pokedex data, so user-specific filters (caught, shiny, screenshot) cannot be applied
         results = results.filter(item => {
           const passesRegion = !regionFilter || item.region?.toLowerCase() === regionFilter;
-          const passesCaught = caughtFilter === null || item.caught === caughtFilter;
-          const passesShiny = shinyFilter === null || item.shiny === shinyFilter;
-          const passesScreenshot = !screenshotFilter || item.screenshot;
-
-          return passesRegion && passesCaught && passesShiny && passesScreenshot;
+          // Cannot filter by caught, shiny, screenshot in AI search since index doesn't have user data
+          return passesRegion;
         });
 
         context.res = {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
-          body: { query, count: results.length, usedAI: true, results }
+          body: {
+            query,
+            count: results.length,
+            usedAI: true,
+            results,
+            note: (caughtFilter !== null || shinyFilter !== null || screenshotFilter) ?
+              'AI search only supports region filtering. User-specific filters (caught, shiny, screenshot) were ignored.' : undefined
+          }
         };
       } catch (err) {
         context.res = {
