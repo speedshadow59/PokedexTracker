@@ -214,6 +214,82 @@ function setupAdminDashboardTabs() {
             panel.innerHTML = '<div class="empty-state">Failed to update user.</div>';
         }
     }
+
+    async function loadAdminMedia() {
+        const panel = document.getElementById('adminPanelMedia');
+        panel.innerHTML = '<div>Loading media...</div>';
+        try {
+            const res = await fetch('/api/adminmedia?action=listMedia', { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to fetch media');
+            const data = await res.json();
+            renderAdminMedia(panel, data.media || []);
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Failed to load media.</div>';
+        }
+    }
+
+    function renderAdminMedia(panel, media) {
+        if (!media.length) {
+            panel.innerHTML = '<div class="empty-state">No media found.</div>';
+            return;
+        }
+        
+        let html = `<div class="media-grid">`;
+        for (const item of media) {
+            const pokemonName = getPokemonName(item.pokemonId) || `Pokemon ${item.pokemonId}`;
+            const shinyText = item.shiny ? ' (Shiny)' : '';
+            html += `
+                <div class="media-item">
+                    <div class="media-info">
+                        <strong>${pokemonName}${shinyText}</strong><br>
+                        <small>User: ${item.userId}</small><br>
+                        <small>Pokemon ID: ${item.pokemonId}</small>
+                    </div>
+                    <div class="media-preview">
+                        <img src="${item.url}" alt="Screenshot" style="max-width: 200px; max-height: 200px; border-radius: 6px; border: 1px solid #d1d5db;">
+                    </div>
+                    <div class="media-actions">
+                        <button class="admin-action-btn delete-btn" data-userid="${item.userId}" data-pokemonid="${item.pokemonId}" data-shiny="${item.shiny}">Delete</button>
+                    </div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        panel.innerHTML = html;
+        
+        // Wire up delete buttons
+        panel.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.onclick = () => adminDeleteScreenshot(btn.dataset.userid, btn.dataset.pokemonid, btn.dataset.shiny === 'true');
+        });
+    }
+
+    async function adminDeleteScreenshot(userId, pokemonId, shiny) {
+        if (!confirm('Are you sure you want to delete this screenshot? This action cannot be undone.')) {
+            return;
+        }
+        
+        const panel = document.getElementById('adminPanelMedia');
+        panel.innerHTML = '<div>Deleting screenshot...</div>';
+        
+        try {
+            const res = await fetch('/api/adminmedia?action=deleteScreenshot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ userId, pokemonId: parseInt(pokemonId), shiny })
+            });
+            
+            if (!res.ok) throw new Error('Failed to delete screenshot');
+            
+            // Reload the media list
+            await loadAdminMedia();
+            showToast('Screenshot deleted successfully.', 'success');
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Failed to delete screenshot.</div>';
+            showToast('Failed to delete screenshot.', 'error');
+        }
+    }
+
     tabMedia.onclick = () => {
         tabUsers.classList.remove('active');
         tabMedia.classList.add('active');
@@ -221,6 +297,7 @@ function setupAdminDashboardTabs() {
         panelUsers.style.display = 'none';
         panelMedia.style.display = '';
         panelAudit.style.display = 'none';
+        loadAdminMedia();
     };
     tabAudit.onclick = () => {
         tabUsers.classList.remove('active');
