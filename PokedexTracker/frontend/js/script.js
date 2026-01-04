@@ -492,7 +492,6 @@ function setupAdminDashboardTabs() {
     window.loadAdminUsers = loadAdminUsers;
     window.loadAdminMedia = loadAdminMedia;
 }
-}
 
 // Load region from URL if present
 function loadFromURL() {
@@ -706,7 +705,11 @@ async function fetchAndApplyCurrentUser() {
             // Always clear caught data on login/user change
             saveCaughtData({});
             if (principal) {
-                if (userInfoEl) userInfoEl.style.display = 'inline-flex';
+                if (userInfoEl) {
+                    userInfoEl.style.display = 'inline-flex';
+                    userInfoEl.style.cursor = 'pointer';
+                    userInfoEl.onclick = showProfileModal;
+                }
                 if (userNameLabel) userNameLabel.textContent = principal.userDetails || principal.userId;
                 if (loginLink) loginLink.style.display = 'none';
                 if (logoutLink) logoutLink.style.display = 'inline-block';
@@ -1747,4 +1750,59 @@ function updateProgress(listOverride) {
 
     const percentage = total > 0 ? (caught / total) * 100 : 0;
     document.getElementById('progressFill').style.width = `${percentage}%`;
+}
+
+// Profile Modal Functions
+async function showProfileModal() {
+    const modal = document.getElementById('profileModal');
+    const content = document.getElementById('profileContent');
+    const closeBtn = document.getElementById('profileCloseBtn');
+
+    modal.style.display = 'block';
+    content.innerHTML = '<div class="loading">Loading profile...</div>';
+
+    try {
+        // Fetch user profile data from Microsoft Graph
+        const response = await fetch('/api/useradmin?action=getUser', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ userId: currentUserPrincipal.userId, action: 'getUser' })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load profile data');
+        }
+
+        const data = await response.json();
+        const user = data.user;
+
+        if (!user) {
+            throw new Error('User data not found');
+        }
+
+        // Display profile information
+        content.innerHTML = `
+            <div class="profile-info"><strong>User ID:</strong> <span>${user.id}</span></div>
+            <div class="profile-info"><strong>Display Name:</strong> <span>${user.name || 'N/A'}</span></div>
+            <div class="profile-info"><strong>Email:</strong> <span>${user.email || 'N/A'}</span></div>
+            <div class="profile-info"><strong>Account Enabled:</strong> <span>${user.blocked ? 'No' : 'Yes'}</span></div>
+            <div class="profile-info"><strong>Admin Role:</strong> <span>${user.isAdmin ? 'Yes' : 'No'}</span></div>
+        `;
+    } catch (error) {
+        content.innerHTML = '<div class="error-message">Failed to load profile data. Please try again.</div>';
+        console.error('Profile load error:', error);
+    }
+
+    // Close modal when clicking the close button
+    closeBtn.onclick = () => {
+        modal.style.display = 'none';
+    };
+
+    // Close modal when clicking outside
+    window.onclick = (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
 }
