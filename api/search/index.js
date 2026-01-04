@@ -101,15 +101,11 @@ module.exports = async function (context, req) {
     // --- AI Search Path ---
     if (aiSearchEnabled) {
       try {
-        // First, get AI search results from the index
+        // Get all Pokemon data from AI search index
         const url = `${searchConfig.endpoint}/indexes/${searchConfig.indexName}/docs/search?api-version=2023-11-01`;
-        let searchQuery = query || '*';
-        let queryType = 'simple';
         const body = {
-          search: searchQuery,
-          top: topK,
-          queryType,
-          searchMode: 'all',
+          search: '*',
+          top: MAX_ITEMS,
           select: 'id,pokemonId,name,types,region,sprite,spriteShiny'
         };
         const res = await fetch(url, {
@@ -125,47 +121,46 @@ module.exports = async function (context, req) {
           throw new Error(`Azure AI Search query failed: ${res.status} ${res.statusText} - ${text}`);
         }
         const data = await res.json();
-        let aiResults = Array.isArray(data.value)
-          ? data.value.map(doc => ({
+        let items = [];
+        if (Array.isArray(data.value)) {
+          // Now query user data from Cosmos DB to merge
+          const db = await connectToDatabase();
+          const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+          const userdexDocs = await userdexCol.find({ userId: principal.userId }).toArray();
+          const userdexMap = {};
+          for (const doc of userdexDocs) {
+            userdexMap[doc.pokemonId] = doc;
+          }
+
+          for (const doc of data.value) {
+            const userData = userdexMap[doc.pokemonId] || {};
+            const textParts = [
+              `Name: ${doc.name || `pokemon-${doc.pokemonId}`}`,
+              Array.isArray(doc.types) && doc.types.length ? `Types: ${doc.types.join(', ')}` : null,
+              userData.notes ? `Notes: ${userData.notes}` : null,
+              userData.caught ? 'caught' : '',
+              userData.shiny ? 'Shiny' : null,
+              doc.region ? `Region: ${doc.region}` : null
+            ].filter(Boolean);
+
+            items.push({
               pokemonId: doc.pokemonId,
               name: doc.name || `pokemon-${doc.pokemonId}`,
               sprite: doc.sprite,
               spriteShiny: doc.spriteShiny || doc.sprite,
               types: Array.isArray(doc.types) ? doc.types : [],
               region: doc.region || inferRegionFromDex(doc.pokemonId),
-              similarity: doc['@search.score'] !== undefined ? Number(doc['@search.score'].toFixed(4)) : undefined
-            }))
-          : [];
-
-        // Now query user data from Cosmos DB to merge with AI results
-        const db = await connectToDatabase();
-        const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-        const userdexDocs = await userdexCol.find({ userId: principal.userId }).toArray();
-        const userdexMap = {};
-        for (const doc of userdexDocs) {
-          userdexMap[doc.pokemonId] = doc;
+              caught: !!userData.caught,
+              shiny: !!userData.shiny,
+              notes: userData.notes || '',
+              screenshot: userData.screenshot || null,
+              embeddingText: textParts.join('. ')
+            });
+          }
         }
 
-        // Merge AI results with user data
-        let results = aiResults.map(aiResult => {
-          const userData = userdexMap[aiResult.pokemonId] || {};
-          return {
-            pokemonId: aiResult.pokemonId,
-            name: aiResult.name,
-            sprite: aiResult.sprite,
-            spriteShiny: aiResult.spriteShiny,
-            types: aiResult.types,
-            region: aiResult.region,
-            caught: !!userData.caught,
-            shiny: !!userData.shiny,
-            notes: userData.notes || '',
-            screenshot: userData.screenshot || null,
-            similarity: aiResult.similarity
-          };
-        });
-
-        // Apply all filters (now that we have user data)
-        results = results.filter(item => {
+        // Apply filters
+        items = items.filter(item => {
           const passesRegion = !regionFilter || item.region?.toLowerCase() === regionFilter;
           const passesCaught = caughtFilter === undefined || Boolean(item.caught) === Boolean(caughtFilter);
           const passesShiny = shinyFilter === undefined || Boolean(item.shiny) === Boolean(shinyFilter);
@@ -173,12 +168,40 @@ module.exports = async function (context, req) {
           return passesRegion && passesCaught && passesShiny && passesScreenshot;
         });
 
+        if (!items.length) {
+          context.res = {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+            body: { query, count: 0, usedAI: true, results: [], message: 'No items matched the provided filters.' }
+          };
+          return;
+        }
+
+        // Score items using keyword scoring for partial matching
+        const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query, item.name) }));
+        scored.sort((a, b) => b.score - a.score);
+        const relevantResults = scored.filter(entry => entry.score > 0);
+        const results = relevantResults.slice(0, topK).map(entry => ({
+          pokemonId: entry.item.pokemonId,
+          name: entry.item.name,
+          sprite: entry.item.sprite,
+          spriteShiny: entry.item.spriteShiny,
+          types: entry.item.types,
+          region: entry.item.region,
+          caught: entry.item.caught,
+          shiny: entry.item.shiny,
+          notes: entry.item.notes,
+          screenshot: entry.item.screenshot,
+          similarity: Number(entry.score.toFixed(4))
+        }));
+
         context.res = {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
           body: {
             query,
             count: results.length,
+            total: relevantResults.length,
             usedAI: true,
             results
           }
