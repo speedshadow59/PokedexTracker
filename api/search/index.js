@@ -104,9 +104,9 @@ function buildSearchFilter(userId, regionFilter, caughtFilter, shinyFilter) {
 }
 
 async function runAzureSearch(config, query, options, context) {
-    // DEBUG: Log Azure Search request
-    context.log('[DEBUG] Azure Search request', { endpoint, indexName, query, filter, top: options.topK });
   const { endpoint, apiKey, indexName } = config;
+  // DEBUG: Log Azure Search request
+  context.log('[DEBUG] Azure Search request', { endpoint, indexName, query, top: options.topK });
   // Only filter by userId if provided (for user-specific search)
   let filter = undefined;
   if (options.userId) {
