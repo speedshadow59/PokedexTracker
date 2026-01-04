@@ -336,7 +336,60 @@ function setupAdminDashboardTabs() {
         setTimeout(poll, 500);
     }
 
-    async function loadAdminMedia() {
+    async function loadAdminAudit(page = 1) {
+        const panel = document.getElementById('adminPanelAudit');
+        panel.innerHTML = '<div>Loading audit logs...</div>';
+        try {
+            const res = await fetch(`/api/useradmin?action=getLogs&page=${page}&pageSize=20`, { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to fetch audit logs');
+            const data = await res.json();
+            renderAdminAudit(panel, data.logs || [], data.pagination);
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Failed to load audit logs.</div>';
+        }
+    }
+
+    function renderAdminAudit(panel, logs, pagination) {
+        if (!logs.length) {
+            panel.innerHTML = '<div class="empty-state">No audit logs found.</div>';
+            return;
+        }
+
+        let html = `<div class="audit-controls">
+            <div class="audit-summary">Total: ${pagination.totalLogs} logs</div>
+            <div class="pagination-controls">
+                ${pagination.hasPrevPage ? `<button class="pagination-btn" onclick="loadAdminAudit(${pagination.currentPage - 1})">← Previous</button>` : ''}
+                <span class="pagination-info">Page ${pagination.currentPage} of ${pagination.totalPages}</span>
+                ${pagination.hasNextPage ? `<button class="pagination-btn" onclick="loadAdminAudit(${pagination.currentPage + 1})">Next →</button>` : ''}
+            </div>
+        </div>`;
+
+        html += `<div class="audit-logs">`;
+        for (const log of logs) {
+            const timestamp = new Date(log.timestamp).toLocaleString();
+            html += `<div class="audit-log-item">
+                <div class="audit-log-header">
+                    <span class="audit-action">${log.action}</span>
+                    <span class="audit-timestamp">${timestamp}</span>
+                </div>
+                <div class="audit-log-details">
+                    ${log.adminId ? `<div><strong>Admin:</strong> ${log.adminId}</div>` : ''}
+                    ${log.targetUserId ? `<div><strong>Target User:</strong> ${log.targetUserId}</div>` : ''}
+                    ${log.details ? `<div><strong>Details:</strong> ${log.details}</div>` : ''}
+                </div>
+            </div>`;
+        }
+        html += `</div>`;
+
+        // Add pagination controls at bottom too
+        html += `<div class="pagination-controls bottom">
+            ${pagination.hasPrevPage ? `<button class="pagination-btn" onclick="loadAdminAudit(${pagination.currentPage - 1})">← Previous</button>` : ''}
+            <span class="pagination-info">Page ${pagination.currentPage} of ${pagination.totalPages}</span>
+            ${pagination.hasNextPage ? `<button class="pagination-btn" onclick="loadAdminAudit(${pagination.currentPage + 1})">Next →</button>` : ''}
+        </div>`;
+
+        panel.innerHTML = html;
+    }
         const panel = document.getElementById('adminPanelMedia');
         panel.innerHTML = '<div>Loading media...</div>';
         try {

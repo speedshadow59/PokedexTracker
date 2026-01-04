@@ -925,3 +925,99 @@ body {
 .delete-btn:hover {
     background: #fecaca !important;
 }
+
+/* Audit Log Styles */
+.audit-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f7f7f7;
+    border-radius: 6px;
+}
+
+.audit-summary {
+    font-weight: 600;
+    color: #333;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pagination-controls.bottom {
+    margin-top: 16px;
+    justify-content: center;
+}
+
+.pagination-btn {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background 0.2s;
+}
+
+.pagination-btn:hover {
+    background: #f3f4f6;
+}
+
+.pagination-info {
+    font-size: 0.9em;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.audit-logs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.audit-log-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.audit-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.audit-action {
+    font-weight: 600;
+    color: #2563eb;
+    background: #eff6ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.audit-timestamp {
+    color: #6b7280;
+    font-size: 0.85em;
+}
+
+.audit-log-details {
+    font-size: 0.9em;
+    color: #374151;
+}
+
+.audit-log-details div {
+    margin-bottom: 2px;
+}
+
+.audit-log-details strong {
+    color: #111827;
+}

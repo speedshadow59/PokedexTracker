@@ -503,13 +503,39 @@ module.exports = async function (context, req) {
             try {
                 const db = await connectToDatabase();
                 const auditlogCollection = db.collection('auditlog');
-                const logs = await auditlogCollection.find({}).limit(100).toArray();
+                
+                // Get all logs first (we'll paginate in memory since we need to sort)
+                const allLogs = await auditlogCollection.find({}).toArray();
                 
                 // Sort in memory since Cosmos DB doesn't have timestamp index
-                logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                context.log('useradmin: getLogs found', logs.length, 'logs');
-                context.res = { status: 200, body: { logs } };
+                allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                // Pagination parameters
+                const page = parseInt(req.query.page) || 1;
+                const pageSize = parseInt(req.query.pageSize) || 20;
+                const totalLogs = allLogs.length;
+                const totalPages = Math.ceil(totalLogs / pageSize);
+                const startIndex = (page - 1) * pageSize;
+                const endIndex = startIndex + pageSize;
+                
+                // Get paginated logs
+                const logs = allLogs.slice(startIndex, endIndex);
+                
+                context.log('useradmin: getLogs found', logs.length, 'logs (page', page, 'of', totalPages, ')');
+                context.res = { 
+                    status: 200, 
+                    body: { 
+                        logs,
+                        pagination: {
+                            currentPage: page,
+                            pageSize: pageSize,
+                            totalPages: totalPages,
+                            totalLogs: totalLogs,
+                            hasNextPage: page < totalPages,
+                            hasPrevPage: page > 1
+                        }
+                    } 
+                };
                 return;
             } catch (err) {
                 context.log('useradmin: getLogs error', err && err.message);
