@@ -36,7 +36,60 @@ function getCaughtData() {
 
 // Save caught Pokemon data to storage
 function saveCaughtData(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    try {
+        const jsonString = JSON.stringify(data);
+        // Check if data size exceeds ~4MB (leaving buffer for other localStorage items)
+        const maxSize = 4 * 1024 * 1024; // 4MB
+        if (jsonString.length > maxSize) {
+            showToast('Data too large for local storage. Some data may be lost. Consider exporting and using cloud sync.', 'error');
+            // Try to save anyway, but truncate if necessary
+            const compressed = compressData(data);
+            if (compressed.length <= maxSize) {
+                localStorage.setItem(STORAGE_KEY, compressed);
+                return;
+            }
+            // If still too large, remove screenshots to reduce size
+            const dataWithoutScreenshots = removeScreenshots(data);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(dataWithoutScreenshots));
+            showToast('Screenshots removed to fit storage limit. Original data preserved in export.', 'warning');
+            return;
+        }
+        localStorage.setItem(STORAGE_KEY, jsonString);
+    } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+            showToast('Storage quota exceeded. Please export your data and clear some space.', 'error');
+            // Try emergency save without screenshots
+            try {
+                const dataWithoutScreenshots = removeScreenshots(data);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(dataWithoutScreenshots));
+                showToast('Saved without screenshots due to storage limit.', 'warning');
+            } catch (e) {
+                showToast('Unable to save data. Please export and clear browser data.', 'error');
+            }
+        } else {
+            console.error('Save error:', error);
+            showToast('Failed to save data locally.', 'error');
+        }
+    }
+}
+
+// Compress data by removing unnecessary whitespace
+function compressData(data) {
+    return JSON.stringify(data);
+}
+
+// Remove screenshots from data to reduce size
+function removeScreenshots(data) {
+    const cleaned = {};
+    for (const [key, value] of Object.entries(data)) {
+        if (value && typeof value === 'object') {
+            cleaned[key] = { ...value };
+            delete cleaned[key].screenshot; // Remove screenshot data
+        } else {
+            cleaned[key] = value;
+        }
+    }
+    return cleaned;
 }
 
 // Load user's caught Pokemon data from backend
@@ -1140,6 +1193,16 @@ function exportLocalData() {
 function importLocalDataFromFile(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
+
+    // Check file size (warn if over 3MB)
+    const maxRecommendedSize = 3 * 1024 * 1024; // 3MB
+    if (file.size > maxRecommendedSize) {
+        if (!confirm(`This file is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Large files may exceed browser storage limits. Continue?`)) {
+            event.target.value = '';
+            return;
+        }
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
         try {
@@ -1156,6 +1219,7 @@ function importLocalDataFromFile(event) {
             }
         } catch (err) {
             console.error('Failed to import data:', err);
+            showToast('Failed to import data. File may be corrupted.', 'error');
         }
     };
     reader.readAsText(file);
