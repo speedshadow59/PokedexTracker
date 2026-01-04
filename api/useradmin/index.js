@@ -202,28 +202,57 @@ module.exports = async function (context, req) {
             try {
                 const graphToken = await getGraphToken();
                 const timestamp = Date.now();
-                const url = `https://graph.microsoft.com/v1.0/users/${req.body.userId}?$select=id,displayName,userPrincipalName,mail,accountEnabled&_=${timestamp}`;
-                context.log('useradmin: fetch user', url);
-                const res = await fetch(url, {
+                let userData;
+                
+                // First try direct lookup by ID
+                let url = `https://graph.microsoft.com/v1.0/users/${req.body.userId}?$select=id,displayName,userPrincipalName,mail,accountEnabled&_=${timestamp}`;
+                context.log('useradmin: fetch user by ID', url);
+                let res = await fetch(url, {
                     headers: {
                         Authorization: `Bearer ${graphToken}`,
                         'Cache-Control': 'no-cache',
                         'Pragma': 'no-cache'
                     }
                 });
+                
                 if (!res.ok) {
-                    const text = await res.text();
-                    context.log('useradmin: graph error', text);
-                    context.res = { status: 500, body: { error: 'Failed to fetch user from Graph', details: text, status: res.status } };
-                    return;
+                    // If direct lookup fails, try searching by userPrincipalName
+                    context.log('useradmin: direct lookup failed, trying UPN search');
+                    const encode = encodeURIComponent;
+                    url = `https://graph.microsoft.com/v1.0/users?$filter=userPrincipalName eq '${encode(req.body.userId)}'&$select=id,displayName,userPrincipalName,mail,accountEnabled&_=${timestamp}`;
+                    context.log('useradmin: fetch user by UPN', url);
+                    res = await fetch(url, {
+                        headers: {
+                            Authorization: `Bearer ${graphToken}`,
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache',
+                            'ConsistencyLevel': 'eventual'
+                        }
+                    });
+                    
+                    if (!res.ok) {
+                        const text = await res.text();
+                        context.log('useradmin: graph error', text);
+                        context.res = { status: 500, body: { error: 'Failed to fetch user from Graph', details: text, status: res.status } };
+                        return;
+                    }
+                    
+                    const searchData = await res.json();
+                    if (!searchData.value || searchData.value.length === 0) {
+                        context.res = { status: 404, body: { error: 'User not found' } };
+                        return;
+                    }
+                    userData = searchData.value[0];
+                } else {
+                    userData = await res.json();
                 }
-                const userData = await res.json();
+                
                 context.log(`useradmin: getUser raw data - accountEnabled: ${userData.accountEnabled} (type: ${typeof userData.accountEnabled})`);
                 context.log(`useradmin: getUser object keys: ${Object.keys(userData).join(', ')}`);
                 
                 let roles = [];
                 try {
-                    roles = await getUserAppRoles(req.body.userId);
+                    roles = await getUserAppRoles(userData.id); // Use the actual object ID for role lookup
                 } catch (roleErr) {
                     context.log('useradmin: getUserAppRoles failed, assuming no admin roles', roleErr.message);
                     roles = []; // Assume no admin roles if we can't check

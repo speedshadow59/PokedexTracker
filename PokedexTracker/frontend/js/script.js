@@ -1547,20 +1547,22 @@ async function savePokemonData() {
     const notes = document.getElementById('catchNotes').value.trim();
     const screenshotFile = document.getElementById('screenshotUpload').files[0];
     
-    // Check screenshot file size (warn if over 2MB, block if over 5MB)
+    // Check screenshot file size (warn if over 2MB, block if over 10MB)
     if (screenshotFile) {
         const maxRecommendedSize = 2 * 1024 * 1024; // 2MB
-        const maxAllowedSize = 5 * 1024 * 1024; // 5MB
+        const maxAllowedSize = 10 * 1024 * 1024; // 10MB (increased from 5MB)
         
         if (screenshotFile.size > maxAllowedSize) {
-            showToast(`Screenshot is too large (${(screenshotFile.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed size is 5MB.`, 'error');
+            showToast(`Screenshot is too large (${(screenshotFile.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed size is 10MB.`, 'error');
             return;
         }
         
         if (screenshotFile.size > maxRecommendedSize) {
-            if (!confirm(`Screenshot is ${(screenshotFile.size / (1024 * 1024)).toFixed(1)}MB. Large files may cause storage issues. Continue?`)) {
+            const proceed = confirm(`Screenshot is ${(screenshotFile.size / (1024 * 1024)).toFixed(1)}MB. Large files may cause storage issues and slow down the app. Continue anyway?`);
+            if (!proceed) {
                 return;
             }
+            showToast('Large screenshot uploaded. Monitor storage usage.', 'warning');
         }
     }
     
@@ -1846,7 +1848,10 @@ async function showProfileModal() {
 
     try {
         // Fetch user profile data from Microsoft Graph
-        const requestBody = { userId: currentUserPrincipal.userId, action: 'getUser' };
+        const requestBody = { 
+            userId: currentUserPrincipal.userDetails || currentUserPrincipal.userId, 
+            action: 'getUser' 
+        };
         console.log('showProfileModal: sending request', requestBody);
 
         const response = await fetch('/api/useradmin?action=getUser', {
