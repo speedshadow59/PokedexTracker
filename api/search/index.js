@@ -19,7 +19,7 @@ function keywordScore(text, query) {
   if (!text || !query) return 0;
   const haystack = text.toLowerCase();
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  return terms.reduce((score, term) => score + (haystack.includes(term) ? 1 : 0), 0);
+  return terms.reduce((score, term) => score + (new RegExp(`\\b${term}\\b`, 'i').test(haystack) ? 1 : 0), 0);
 }
 
 function inferRegionFromDex(pokemonId) {
@@ -193,7 +193,7 @@ module.exports = async function (context, req) {
         `Name: ${meta.name}`,
         meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
         doc.notes ? `Notes: ${doc.notes}` : null,
-        doc.caught ? 'Status: caught' : 'Status: uncaptured',
+        doc.caught ? 'Status: caught' : 'Status: not-caught',
         doc.shiny ? 'Shiny' : null,
         meta.region ? `Region: ${meta.region}` : null
       ].filter(Boolean);
