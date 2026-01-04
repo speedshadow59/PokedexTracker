@@ -200,7 +200,6 @@ module.exports = async function (context, req) {
       }
 
       const filter = { userId: principal.userId };
-      if (caughtFilter !== undefined) filter.caught = caughtFilter;
       if (shinyFilter !== undefined) filter.shiny = shinyFilter;
 
       let documents = [];
@@ -224,6 +223,9 @@ module.exports = async function (context, req) {
       for (const doc of documents) {
         const meta = await getPokemonMeta(doc.pokemonId);
         if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
+          continue;
+        }
+        if (caughtFilter !== undefined && !!doc.caught !== caughtFilter) {
           continue;
         }
 
