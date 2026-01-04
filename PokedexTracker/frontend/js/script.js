@@ -651,53 +651,55 @@ function setupEventListeners() {
 // Filter Pokemon by search
 function filterPokemonBySearch(e) {
     const rawSearch = e.target.value;
+    const searchTerm = rawSearch.trim();
+    // Example: get caught filter from a checkbox or UI element
+    const caughtCheckbox = document.getElementById('caughtFilter');
+    const caughtFilter = caughtCheckbox ? caughtCheckbox.checked : undefined;
 
-    if (aiSearchEnabled) {
-        if (!rawSearch.trim()) {
-            // Reset filters and show all Pokémon
+    // Always call backend search
+    let url = `${window.APP_CONFIG.API_BASE_URL}/search?q=${encodeURIComponent(searchTerm)}`;
+    if (caughtFilter !== undefined) url += `&caught=${caughtFilter}`;
+    url += `&topK=30`;
+
+    fetch(url, { method: 'GET', credentials: 'include' })
+        .then(response => response.json())
+        .then(data => {
+            const results = Array.isArray(data.results) ? data.results : [];
+            currentSearchResults = results.map(r => ({
+                id: r.pokemonId,
+                name: r.name || `pokemon-${r.pokemonId}`,
+                sprite: r.sprite,
+                spriteShiny: r.spriteShiny || r.sprite,
+                types: Array.isArray(r.types) && r.types.length ? r.types : ['unknown'],
+                region: r.region || null,
+                caught: !!r.caught,
+                shiny: !!r.shiny,
+                notes: r.notes || ''
+            }));
+            renderPokemonGrid();
+            updateProgress(currentSearchResults);
+            if (!currentSearchResults.length) {
+                let emptyMsg = document.getElementById('searchEmpty');
+                if (!emptyMsg) {
+                    emptyMsg = document.createElement('div');
+                    emptyMsg.id = 'searchEmpty';
+                    emptyMsg.className = 'empty-state';
+                    emptyMsg.innerHTML = '<p>No Pokémon found matching your search.</p>';
+                    document.getElementById('pokemonGrid').after(emptyMsg);
+                }
+                emptyMsg.style.display = 'block';
+            } else {
+                const emptyMsg = document.getElementById('searchEmpty');
+                if (emptyMsg) emptyMsg.style.display = 'none';
+            }
+        })
+        .catch(err => {
+            console.error('Search failed', err);
+            showToast('Search unavailable.', 'warning');
             currentSearchResults = null;
             renderPokemonGrid();
             updateProgress();
-            const emptyMsg = document.getElementById('searchEmpty');
-            if (emptyMsg) emptyMsg.style.display = 'none';
-            return;
-        }
-        runAISearch(rawSearch);
-        return;
-    }
-
-    const searchTerm = rawSearch.toLowerCase();
-    currentSearchResults = null;
-    const cards = document.querySelectorAll('.pokemon-card');
-    let visibleCount = 0;
-    
-    cards.forEach(card => {
-        const name = card.querySelector('.pokemon-name').textContent.toLowerCase();
-        const number = card.querySelector('.pokemon-number').textContent.toLowerCase();
-        
-        if (name.includes(searchTerm) || number.includes(searchTerm)) {
-            card.style.display = 'block';
-            visibleCount++;
-        } else {
-            card.style.display = 'none';
-        }
-    });
-    
-    if (visibleCount === 0 && searchTerm) {
-        // Show empty state
-        let emptyMsg = document.getElementById('searchEmpty');
-        if (!emptyMsg) {
-            emptyMsg = document.createElement('div');
-            emptyMsg.id = 'searchEmpty';
-            emptyMsg.className = 'empty-state';
-            emptyMsg.innerHTML = '<p>No Pokémon found matching your search.</p>';
-            document.getElementById('pokemonGrid').after(emptyMsg);
-        }
-        emptyMsg.style.display = 'block';
-    } else {
-        const emptyMsg = document.getElementById('searchEmpty');
-        if (emptyMsg) emptyMsg.style.display = 'none';
-    }
+        });
 }
 
 function updateAISearchStatus(text) {
