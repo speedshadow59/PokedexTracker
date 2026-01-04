@@ -177,99 +177,181 @@ async function runAzureSearch(config, query, options, context) {
 
 module.exports = async function (context, req) {
     context.log('[DEBUG] Handler start', { isAISearch, searchConfig });
-  const principal = getClientPrincipal(req);
-  const searchConfig = getSearchConfig();
-  const isAISearch = !!searchConfig;
-  // If not AI search, require authentication
-  if ((!principal || !principal.userId) && !isAISearch) {
-    context.res = { status: 401, headers: { 'Content-Type': 'application/json' }, body: { error: 'Unauthorized' } };
-    return;
-  }
-
-  const query = (req.query.q || req.query.query || (req.body && req.body.query) || '').trim();
-  if (!query) {
-    context.res = { status: 400, headers: { 'Content-Type': 'application/json' }, body: { error: 'Missing query parameter: q' } };
-    return;
-  }
-
-  const regionFilter = (req.query.region || (req.body && req.body.region) || '').toLowerCase();
-  const caughtFilter = parseBoolean(req.query.caught ?? req.body?.caught);
-  const shinyFilter = parseBoolean(req.query.shiny ?? req.body?.shiny);
-  const topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
-  const topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
-
-  let items = [];
-  if (!isAISearch) {
-    let collection;
-    try {
-      const db = await connectToDatabase();
-      collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-    } catch (err) {
-      context.log.error('DB connection failed', err);
-      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed' } };
+  try {
+    const principal = getClientPrincipal(req);
+    const searchConfig = getSearchConfig();
+    const isAISearch = !!searchConfig;
+    // If not AI search, require authentication
+    if ((!principal || !principal.userId) && !isAISearch) {
+      context.res = { status: 401, headers: { 'Content-Type': 'application/json' }, body: { error: 'Unauthorized' } };
       return;
     }
 
-    const filter = { userId: principal.userId };
-    if (caughtFilter !== undefined) filter.caught = caughtFilter;
-    if (shinyFilter !== undefined) filter.shiny = shinyFilter;
-
-    let documents = [];
-    try {
-      documents = await collection.find(filter).limit(MAX_ITEMS).toArray();
-    } catch (err) {
-      context.log.error('Failed to query userdex', err);
-      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data' } };
+    const query = (req.query.q || req.query.query || (req.body && req.body.query) || '').trim();
+    if (!query) {
+      context.res = { status: 400, headers: { 'Content-Type': 'application/json' }, body: { error: 'Missing query parameter: q' } };
       return;
     }
 
-    if (!documents.length) {
-      context.res = {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: { query, count: 0, usedAI: false, results: [], message: 'No entries found for this user.' }
-      };
-      return;
-    }
+    const regionFilter = (req.query.region || (req.body && req.body.region) || '').toLowerCase();
+    const caughtFilter = parseBoolean(req.query.caught ?? req.body?.caught);
+    const shinyFilter = parseBoolean(req.query.shiny ?? req.body?.shiny);
+    const topKInput = parseInt(req.query.topK || req.query.k || (req.body && req.body.topK), 10);
+    const topK = Number.isFinite(topKInput) ? Math.max(1, Math.min(topKInput, MAX_ITEMS)) : DEFAULT_TOP_K;
 
-    for (const doc of documents) {
-      const meta = await getPokemonMeta(doc.pokemonId);
-      if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
-        continue;
+    let items = [];
+    if (!isAISearch) {
+      let collection;
+      try {
+        const db = await connectToDatabase();
+        collection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+      } catch (err) {
+        context.log.error('DB connection failed', err);
+        context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed', details: err && err.stack } };
+        return;
       }
 
-      const textParts = [
-        `Name: ${meta.name}`,
-        meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
-        doc.notes ? `Notes: ${doc.notes}` : null,
-        doc.caught ? 'Status: caught' : 'Status: not caught',
-        doc.shiny ? 'Shiny' : null,
-        meta.region ? `Region: ${meta.region}` : null
-      ].filter(Boolean);
+      const filter = { userId: principal.userId };
+      if (caughtFilter !== undefined) filter.caught = caughtFilter;
+      if (shinyFilter !== undefined) filter.shiny = shinyFilter;
 
-      items.push({
-        pokemonId: meta.pokemonId,
-        name: meta.name,
-        sprite: meta.sprite,
-        spriteShiny: meta.spriteShiny,
-        types: meta.types,
-        region: meta.region,
-        caught: !!doc.caught,
-        shiny: !!doc.shiny,
-        notes: doc.notes || '',
-        screenshot: doc.screenshot || null,
-        embeddingText: textParts.join('. ')
-      });
+      let documents = [];
+      try {
+        documents = await collection.find(filter).limit(MAX_ITEMS).toArray();
+      } catch (err) {
+        context.log.error('Failed to query userdex', err);
+        context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data', details: err && err.stack } };
+        return;
+      }
+
+      if (!documents.length) {
+        context.res = {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: { query, count: 0, usedAI: false, results: [], message: 'No entries found for this user.' }
+        };
+        return;
+      }
+
+      for (const doc of documents) {
+        const meta = await getPokemonMeta(doc.pokemonId);
+        if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
+          continue;
+        }
+
+        const textParts = [
+          `Name: ${meta.name}`,
+          meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
+          doc.notes ? `Notes: ${doc.notes}` : null,
+          doc.caught ? 'Status: caught' : 'Status: not caught',
+          doc.shiny ? 'Shiny' : null,
+          meta.region ? `Region: ${meta.region}` : null
+        ].filter(Boolean);
+
+        items.push({
+          pokemonId: meta.pokemonId,
+          name: meta.name,
+          sprite: meta.sprite,
+          spriteShiny: meta.spriteShiny,
+          types: meta.types,
+          region: meta.region,
+          caught: !!doc.caught,
+          shiny: !!doc.shiny,
+          notes: doc.notes || '',
+          screenshot: doc.screenshot || null,
+          embeddingText: textParts.join('. ')
+        });
+      }
+
+      if (!items.length) {
+        context.res = {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: { query, count: 0, usedAI: false, results: [], message: 'No items matched the provided filters.' }
+        };
+        return;
+      }
     }
 
-    if (!items.length) {
-      context.res = {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-        body: { query, count: 0, usedAI: false, results: [], message: 'No items matched the provided filters.' }
-      };
-      return;
+    let usedAI = false;
+    let results = [];
+
+    if (isAISearch) {
+      try {
+        const searchResults = await runAzureSearch(searchConfig, query, {
+          userId: undefined,
+          regionFilter,
+          caughtFilter,
+          shinyFilter,
+          topK
+        }, context);
+        usedAI = true;
+        results = searchResults.slice(0, topK);
+      } catch (err) {
+        context.log.error('[DEBUG] Azure AI Search error', err);
+        context.log.warn('Azure AI Search failed, falling back to keyword search', err.message);
+        // fallback to local keyword search
+        const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
+        scored.sort((a, b) => b.score - a.score);
+        results = scored.slice(0, topK).map(entry => ({
+          pokemonId: entry.item.pokemonId,
+          name: entry.item.name,
+          sprite: entry.item.sprite,
+          spriteShiny: entry.item.spriteShiny,
+          types: entry.item.types,
+          region: entry.item.region,
+          caught: entry.item.caught,
+          shiny: entry.item.shiny,
+          notes: entry.item.notes,
+          screenshot: entry.item.screenshot,
+          similarity: Number(entry.score.toFixed(4))
+        }));
+        usedAI = false;
+        // Return error details in response for debugging
+        context.res = {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+          body: { error: 'Azure AI Search failed', details: err && err.stack }
+        };
+        return;
+      }
+    } else {
+      // No AI search, always use local keyword search
+      const scored = items.map(item => ({ item, score: keywordScore(item.embeddingText, query) }));
+      scored.sort((a, b) => b.score - a.score);
+      results = scored.slice(0, topK).map(entry => ({
+        pokemonId: entry.item.pokemonId,
+        name: entry.item.name,
+        sprite: entry.item.sprite,
+        spriteShiny: entry.item.spriteShiny,
+        types: entry.item.types,
+        region: entry.item.region,
+        caught: entry.item.caught,
+        shiny: entry.item.shiny,
+        notes: entry.item.notes,
+        screenshot: entry.item.screenshot,
+        similarity: Number(entry.score.toFixed(4))
+      }));
     }
+
+    context.res = {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        query,
+        count: results.length,
+        total: items.length,
+        usedAI,
+        results
+      }
+    };
+  } catch (err) {
+    // Catch-all error handler for debugging
+    context.res = {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: { error: 'Unhandled error in search handler', details: err && err.stack }
+    };
   }
 
   let usedAI = false;
