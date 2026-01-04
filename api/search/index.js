@@ -200,17 +200,52 @@ module.exports = async function (context, req) {
     for (const doc of userdexDocs) {
       userdexMap[doc.pokemonId] = doc;
     }
+
+    // Try to get types from AI search index for better performance
+    let typesMap = {};
+    if (searchConfig) {
+      try {
+        const typesUrl = `${searchConfig.endpoint}/indexes/${searchConfig.indexName}/docs/search?api-version=2023-11-01`;
+        const typesBody = {
+          search: '*',
+          top: MAX_ITEMS,
+          select: 'pokemonId,types'
+        };
+        const typesRes = await fetch(typesUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': searchConfig.apiKey
+          },
+          body: JSON.stringify(typesBody)
+        });
+        if (typesRes.ok) {
+          const typesData = await typesRes.json();
+          if (Array.isArray(typesData.value)) {
+            for (const doc of typesData.value) {
+              typesMap[doc.pokemonId] = Array.isArray(doc.types) ? doc.types : [];
+            }
+          }
+        }
+      } catch (err) {
+        // If AI search fails, we'll fall back to PokeAPI calls
+        context.log('Failed to get types from AI search index, falling back to PokeAPI');
+      }
+    }
+
     let items = [];
     for (const base of pokedexDocs) {
       const doc = userdexMap[base.pokemonId] || {};
       const meta = await getPokemonMeta(base.pokemonId);
+      // Use types from AI search index if available, otherwise from PokeAPI
+      const types = typesMap[base.pokemonId] || meta.types || [];
       if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) continue;
       if (caughtFilter !== undefined && Boolean(doc.caught) !== Boolean(caughtFilter)) continue;
       if (shinyFilter !== undefined && Boolean(doc.shiny) !== Boolean(shinyFilter)) continue;
       if (screenshotFilter && !doc.screenshot) continue;
       const textParts = [
         `Name: ${meta.name}`,
-        meta.types && meta.types.length ? `Types: ${meta.types.join(', ')}` : null,
+        types && types.length ? `Types: ${types.join(', ')}` : null,
         doc.notes ? `Notes: ${doc.notes}` : null,
         doc.caught ? 'caught' : '',
         doc.shiny ? 'Shiny' : null,
@@ -221,7 +256,7 @@ module.exports = async function (context, req) {
         name: meta.name,
         sprite: meta.sprite,
         spriteShiny: meta.spriteShiny,
-        types: meta.types,
+        types: types,
         region: meta.region,
         caught: !!doc.caught,
         shiny: !!doc.shiny,
