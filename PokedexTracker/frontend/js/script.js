@@ -486,6 +486,9 @@ function setupAdminDashboardTabs() {
         panelAudit.style.display = '';
         loadAdminAudit(1);
     };
+
+    // Make functions globally accessible for onclick handlers
+    window.loadAdminAudit = loadAdminAudit;
 }
 
 // Load region from URL if present
