@@ -159,7 +159,7 @@ function setupAdminDashboardTabs() {
         const panel = document.getElementById('adminPanelUsers');
         panel.innerHTML = '<div>Loading users...</div>';
         try {
-            const res = await fetch('/api/checkadmin?action=listUsers', { credentials: 'include' });
+            const res = await fetch('/api/useradmin?action=listUsers', { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch users');
             const data = await res.json();
             renderAdminUsers(panel, data.users || []);
@@ -216,7 +216,7 @@ function setupAdminDashboardTabs() {
             if (action === 'demote') mappedAction = 'demoteAdmin';
             if (action === 'block') mappedAction = 'blockUser';
             if (action === 'unblock') mappedAction = 'unblockUser';
-            const res = await fetch(`/api/checkadmin?action=${mappedAction}`, {
+            const res = await fetch(`/api/useradmin?action=${mappedAction}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -307,6 +307,39 @@ function setupAdminDashboardTabs() {
         }
     }
 
+    async function loadAdminAudit() {
+        const panel = document.getElementById('adminPanelAudit');
+        panel.innerHTML = '<div>Loading audit logs...</div>';
+        try {
+            const res = await fetch('/api/useradmin?action=getLogs', { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to fetch audit logs');
+            const data = await res.json();
+            renderAdminAudit(panel, data.logs || []);
+        } catch (err) {
+            panel.innerHTML = '<div class="empty-state">Failed to load audit logs.</div>';
+        }
+    }
+
+    function renderAdminAudit(panel, logs) {
+        if (!logs.length) {
+            panel.innerHTML = '<div class="empty-state">No audit logs found.</div>';
+            return;
+        }
+        
+        let html = `<table class="admin-table"><thead><tr><th>Timestamp</th><th>Action</th><th>User</th><th>Details</th></tr></thead><tbody>`;
+        for (const log of logs) {
+            const timestamp = log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown';
+            html += `<tr>
+                <td>${timestamp}</td>
+                <td>${log.action || 'Unknown'}</td>
+                <td>${log.userId || log.adminId || 'System'}</td>
+                <td>${log.details || log.message || 'No details'}</td>
+            </tr>`;
+        }
+        html += '</tbody></table>';
+        panel.innerHTML = html;
+    }
+
     tabMedia.onclick = () => {
         tabUsers.classList.remove('active');
         tabMedia.classList.add('active');
@@ -323,6 +356,7 @@ function setupAdminDashboardTabs() {
         panelUsers.style.display = 'none';
         panelMedia.style.display = 'none';
         panelAudit.style.display = '';
+        loadAdminAudit();
     };
 }
 

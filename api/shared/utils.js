@@ -233,6 +233,15 @@ async function blockUser(userId) {
   return { matched: result.matchedCount, modified: result.modifiedCount };
 }
 
+async function unblockUser(userId) {
+  const db = await connectToDatabase();
+  const result = await db.collection('users').updateOne(
+    { _id: userId },
+    { $set: { blocked: false } }
+  );
+  return { matched: result.matchedCount, modified: result.modifiedCount };
+}
+
 module.exports = {
   connectToDatabase,
   getBlobServiceClient,
@@ -245,5 +254,6 @@ module.exports = {
   getServicePrincipalRoleMap,
   getAllUsers,
   setUserRole,
-  blockUser
+  blockUser,
+  unblockUser
 };

@@ -1,6 +1,6 @@
 // Useradmin endpoints: user management (list, promote/demote, block) and content moderation
 // Protect all actions with admin check
-const { getGraphToken, getUserById, getAllUsers, setUserRole, blockUser, connectToDatabase, getBlobServiceClient, getClientPrincipal, getUserAppRoles } = require('../shared/utils');
+const { getGraphToken, getUserById, getAllUsers, setUserRole, blockUser, unblockUser, connectToDatabase, getBlobServiceClient, getClientPrincipal, getUserAppRoles } = require('../shared/utils');
 
 module.exports = async function (context, req) {
     context.log('useradmin: function start');
@@ -184,6 +184,11 @@ module.exports = async function (context, req) {
             context.res = { status: 200, body: { result } };
             return;
         }
+        if (action === 'unblockUser' && req.body && req.body.userId) {
+            const result = await unblockUser(req.body.userId);
+            context.res = { status: 200, body: { result } };
+            return;
+        }
 
         // Content moderation actions
         if (action === 'listMedia') {
@@ -292,6 +297,45 @@ module.exports = async function (context, req) {
             } catch (err) {
                 context.log('useradmin: deleteScreenshot error', err && err.message);
                 context.res = { status: 500, body: { error: 'Failed to delete screenshot', details: err && err.message } };
+                return;
+            }
+        }
+
+        // Audit log actions
+        if (action === 'getLogs') {
+            context.log('useradmin: getLogs start');
+            try {
+                const db = await connectToDatabase();
+                const auditlogCollection = db.collection('auditlog');
+                const logs = await auditlogCollection.find({}).sort({ timestamp: -1 }).limit(100).toArray();
+
+                context.log('useradmin: getLogs found', logs.length, 'logs');
+                context.res = { status: 200, body: { logs } };
+                return;
+            } catch (err) {
+                context.log('useradmin: getLogs error', err && err.message);
+                context.res = { status: 500, body: { error: 'Failed to get audit logs', details: err && err.message } };
+                return;
+            }
+        }
+
+        if (action === 'addLog' && req.body && req.body.log) {
+            context.log('useradmin: addLog start', req.body.log);
+            try {
+                const db = await connectToDatabase();
+                const auditlogCollection = db.collection('auditlog');
+
+                const log = req.body.log;
+                log.timestamp = new Date();
+
+                const result = await auditlogCollection.insertOne(log);
+
+                context.log('useradmin: addLog success');
+                context.res = { status: 200, body: { success: true, result } };
+                return;
+            } catch (err) {
+                context.log('useradmin: addLog error', err && err.message);
+                context.res = { status: 500, body: { error: 'Failed to add audit log', details: err && err.message } };
                 return;
             }
         }
