@@ -201,15 +201,9 @@ module.exports = async function (context, req) {
       context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Database connection failed', details: err && err.stack } };
       return;
     }
+
+    // Get user data from Cosmos DB
     const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-    const pokedexCol = db.collection('pokedex');
-    let pokedexDocs = [];
-    try {
-      pokedexDocs = await pokedexCol.find({}).limit(MAX_ITEMS).toArray();
-    } catch (err) {
-      context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query pokedex', details: err && err.stack } };
-      return;
-    }
     let userdexDocs = [];
     try {
       userdexDocs = await userdexCol.find({ userId: principal.userId }).limit(MAX_ITEMS).toArray();
@@ -222,65 +216,168 @@ module.exports = async function (context, req) {
       userdexMap[doc.pokemonId] = doc;
     }
 
-    // Try to get types from AI search index for better performance
-    let typesMap = {};
+    // Get Pokemon data from AI search index (same as AI search)
+    let items = [];
     if (searchConfig) {
       try {
-        const typesUrl = `${searchConfig.endpoint}/indexes/${searchConfig.indexName}/docs/search?api-version=2023-11-01`;
-        const typesBody = {
+        const url = `${searchConfig.endpoint}/indexes/${searchConfig.indexName}/docs/search?api-version=2023-11-01`;
+        const body = {
           search: '*',
           top: MAX_ITEMS,
-          select: 'pokemonId,types'
+          select: 'id,pokemonId,name,types,region,sprite,spriteShiny'
         };
-        const typesRes = await fetch(typesUrl, {
+        const res = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'api-key': searchConfig.apiKey
           },
-          body: JSON.stringify(typesBody)
+          body: JSON.stringify(body)
         });
-        if (typesRes.ok) {
-          const typesData = await typesRes.json();
-          if (Array.isArray(typesData.value)) {
-            for (const doc of typesData.value) {
-              typesMap[doc.pokemonId] = Array.isArray(doc.types) ? doc.types : [];
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.value)) {
+            for (const doc of data.value) {
+              const userData = userdexMap[doc.pokemonId] || {};
+              const textParts = [
+                `Name: ${doc.name || `pokemon-${doc.pokemonId}`}`,
+                Array.isArray(doc.types) && doc.types.length ? `Types: ${doc.types.join(', ')}` : null,
+                userData.notes ? `Notes: ${userData.notes}` : null,
+                userData.caught ? 'caught' : '',
+                userData.shiny ? 'Shiny' : null,
+                doc.region ? `Region: ${doc.region}` : null
+              ].filter(Boolean);
+
+              items.push({
+                pokemonId: doc.pokemonId,
+                name: doc.name || `pokemon-${doc.pokemonId}`,
+                sprite: doc.sprite,
+                spriteShiny: doc.spriteShiny || doc.sprite,
+                types: Array.isArray(doc.types) ? doc.types : [],
+                region: doc.region || inferRegionFromDex(doc.pokemonId),
+                caught: !!userData.caught,
+                shiny: !!userData.shiny,
+                notes: userData.notes || '',
+                screenshot: userData.screenshot || null,
+                embeddingText: textParts.join('. ')
+              });
             }
+          }
+        } else {
+          // Fallback to old method if AI search fails
+          context.log('AI search index query failed, falling back to Cosmos DB pokedex collection');
+          const pokedexCol = db.collection('pokedex');
+          let pokedexDocs = [];
+          try {
+            pokedexDocs = await pokedexCol.find({}).limit(MAX_ITEMS).toArray();
+          } catch (err) {
+            context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query pokedex', details: err && err.stack } };
+            return;
+          }
+
+          for (const base of pokedexDocs) {
+            const doc = userdexMap[base.pokemonId] || {};
+            const meta = await getPokemonMeta(base.pokemonId);
+            const types = meta.types || [];
+            const textParts = [
+              `Name: ${meta.name}`,
+              types && types.length ? `Types: ${types.join(', ')}` : null,
+              doc.notes ? `Notes: ${doc.notes}` : null,
+              doc.caught ? 'caught' : '',
+              doc.shiny ? 'Shiny' : null,
+              meta.region ? `Region: ${meta.region}` : null
+            ].filter(Boolean);
+            items.push({
+              pokemonId: meta.pokemonId,
+              name: meta.name,
+              sprite: meta.sprite,
+              spriteShiny: meta.spriteShiny,
+              types: types,
+              region: meta.region,
+              caught: !!doc.caught,
+              shiny: !!doc.shiny,
+              notes: doc.notes || '',
+              screenshot: doc.screenshot || null,
+              embeddingText: textParts.join('. ')
+            });
           }
         }
       } catch (err) {
-        // If AI search fails, we'll fall back to PokeAPI calls
-        context.log('Failed to get types from AI search index, falling back to PokeAPI');
-      }
-    }
+        context.log('AI search index query failed, falling back to Cosmos DB pokedex collection');
+        // Fallback to old method
+        const pokedexCol = db.collection('pokedex');
+        let pokedexDocs = [];
+        try {
+          pokedexDocs = await pokedexCol.find({}).limit(MAX_ITEMS).toArray();
+        } catch (err) {
+          context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query pokedex', details: err && err.stack } };
+          return;
+        }
 
-    let items = [];
-    for (const base of pokedexDocs) {
-      const doc = userdexMap[base.pokemonId] || {};
-      const meta = await getPokemonMeta(base.pokemonId);
-      // Use types from AI search index if available, otherwise from PokeAPI
-      const types = typesMap[base.pokemonId] || meta.types || [];
-      const textParts = [
-        `Name: ${meta.name}`,
-        types && types.length ? `Types: ${types.join(', ')}` : null,
-        doc.notes ? `Notes: ${doc.notes}` : null,
-        doc.caught ? 'caught' : '',
-        doc.shiny ? 'Shiny' : null,
-        meta.region ? `Region: ${meta.region}` : null
-      ].filter(Boolean);
-      items.push({
-        pokemonId: meta.pokemonId,
-        name: meta.name,
-        sprite: meta.sprite,
-        spriteShiny: meta.spriteShiny,
-        types: types,
-        region: meta.region,
-        caught: !!doc.caught,
-        shiny: !!doc.shiny,
-        notes: doc.notes || '',
-        screenshot: doc.screenshot || null,
-        embeddingText: textParts.join('. ')
-      });
+        for (const base of pokedexDocs) {
+          const doc = userdexMap[base.pokemonId] || {};
+          const meta = await getPokemonMeta(base.pokemonId);
+          const types = meta.types || [];
+          const textParts = [
+            `Name: ${meta.name}`,
+            types && types.length ? `Types: ${types.join(', ')}` : null,
+            doc.notes ? `Notes: ${doc.notes}` : null,
+            doc.caught ? 'caught' : '',
+            doc.shiny ? 'Shiny' : null,
+            meta.region ? `Region: ${meta.region}` : null
+          ].filter(Boolean);
+          items.push({
+            pokemonId: meta.pokemonId,
+            name: meta.name,
+            sprite: meta.sprite,
+            spriteShiny: meta.spriteShiny,
+            types: types,
+            region: meta.region,
+            caught: !!doc.caught,
+            shiny: !!doc.shiny,
+            notes: doc.notes || '',
+            screenshot: doc.screenshot || null,
+            embeddingText: textParts.join('. ')
+          });
+        }
+      }
+    } else {
+      // No AI search configured, use Cosmos DB pokedex collection
+      const pokedexCol = db.collection('pokedex');
+      let pokedexDocs = [];
+      try {
+        pokedexDocs = await pokedexCol.find({}).limit(MAX_ITEMS).toArray();
+      } catch (err) {
+        context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query pokedex', details: err && err.stack } };
+        return;
+      }
+
+      for (const base of pokedexDocs) {
+        const doc = userdexMap[base.pokemonId] || {};
+        const meta = await getPokemonMeta(base.pokemonId);
+        const types = meta.types || [];
+        const textParts = [
+          `Name: ${meta.name}`,
+          types && types.length ? `Types: ${types.join(', ')}` : null,
+          doc.notes ? `Notes: ${doc.notes}` : null,
+          doc.caught ? 'caught' : '',
+          doc.shiny ? 'Shiny' : null,
+          meta.region ? `Region: ${meta.region}` : null
+        ].filter(Boolean);
+        items.push({
+          pokemonId: meta.pokemonId,
+          name: meta.name,
+          sprite: meta.sprite,
+          spriteShiny: meta.spriteShiny,
+          types: types,
+          region: meta.region,
+          caught: !!doc.caught,
+          shiny: !!doc.shiny,
+          notes: doc.notes || '',
+          screenshot: doc.screenshot || null,
+          embeddingText: textParts.join('. ')
+        });
+      }
     }
 
     // Apply filters to items (same logic as AI search)
