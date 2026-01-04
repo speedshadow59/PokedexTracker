@@ -5,8 +5,7 @@
       "type": "httpTrigger",
       "direction": "in",
       "name": "req",
-      "methods": ["get", "post"],
-      "route": "contentmoderation"
+      "methods": ["get", "post"]
     },
     {
       "type": "http",
