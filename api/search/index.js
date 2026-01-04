@@ -122,8 +122,13 @@ async function runAzureSearch(config, query, options, context) {
 
   const url = `${endpoint}/indexes/${indexName}/docs/search?api-version=2023-11-01`; // stable API version
 
+  // Use wildcard for partial name matching
+  let searchQuery = query || '*';
+  if (query && query !== '*') {
+    searchQuery = `*${query}*`;
+  }
   const body = {
-    search: query || '*',
+    search: searchQuery,
     filter: filter || undefined,
     top: options.topK,
     queryType: 'simple',
@@ -274,13 +279,19 @@ module.exports = async function (context, req) {
 
     if (isAISearch) {
       try {
-        const searchResults = await runAzureSearch(searchConfig, query, {
+        let searchResults = await runAzureSearch(searchConfig, query, {
           userId: undefined,
           regionFilter,
           caughtFilter,
           shinyFilter,
           topK
         }, context);
+        // If searching for 'caught' as a keyword, also include caught Pokémon
+        if (query && query.toLowerCase() === 'caught') {
+          searchResults = searchResults.concat(
+            searchResults.filter(r => r.caught)
+          );
+        }
         usedAI = true;
         results = searchResults.slice(0, topK);
       } catch (err) {
