@@ -1,6 +1,6 @@
 // Admin endpoints: content moderation (list media, remove/restore)
-const { connectToDatabase, getBlobServiceClient } = require('../shared/utils');
-const checkAdmin = require('../checkadmin');
+// const { connectToDatabase, getBlobServiceClient } = require('../shared/utils');
+// const checkAdmin = require('../checkadmin');
 
 module.exports = async function (context, req) {
     // IMMEDIATE TEST RESPONSE
