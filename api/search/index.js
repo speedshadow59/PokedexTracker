@@ -225,8 +225,11 @@ module.exports = async function (context, req) {
         if (regionFilter && meta.region && meta.region.toLowerCase() !== regionFilter) {
           continue;
         }
-        if (caughtFilter !== undefined && Boolean(doc.caught) !== Boolean(caughtFilter)) {
-          continue;
+        if (caughtFilter !== undefined) {
+          context.log(`[DEBUG] Filtering: doc.pokemonId=${doc.pokemonId}, doc.caught=${doc.caught}, caughtFilter=${caughtFilter}, compare=${Boolean(doc.caught) === Boolean(caughtFilter)}`);
+          if (Boolean(doc.caught) !== Boolean(caughtFilter)) {
+            continue;
+          }
         }
 
         const textParts = [
