@@ -235,12 +235,15 @@ async function setUserRole(userId, role) {
 
   if (role === 'admin') {
     // Assign Admin role
+    console.log(`[PROMOTE DEBUG] Starting promote for userId: ${userId}`);
+    console.log(`[PROMOTE DEBUG] spId: ${spId}, adminRoleId: ${adminRoleId}`);
     const url = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`;
     const assignment = {
       principalId: userId,
       resourceId: spId,
       appRoleId: adminRoleId
     };
+    console.log(`[PROMOTE DEBUG] Creating assignment:`, assignment);
 
     const res = await fetch(url, {
       method: 'POST',
@@ -256,10 +259,13 @@ async function setUserRole(userId, role) {
       throw new Error(`Failed to assign Admin role: ${res.status} ${res.statusText} - ${text}`);
     }
 
+    console.log(`[PROMOTE DEBUG] Successfully created admin assignment`);
     return { success: true, action: 'assigned', role: 'admin' };
   } else {
     // Remove Admin role - query user's app role assignments directly
+    console.log(`[DEMOTE DEBUG] Starting demote for userId: ${userId}`);
     const assignmentsUrl = `https://graph.microsoft.com/v1.0/users/${userId}/appRoleAssignments`;
+    console.log(`[DEMOTE DEBUG] Fetching assignments from: ${assignmentsUrl}`);
     const assignmentsRes = await fetch(assignmentsUrl, {
       headers: { Authorization: `Bearer ${graphToken}` }
     });
@@ -270,13 +276,24 @@ async function setUserRole(userId, role) {
     }
 
     const assignmentsData = await assignmentsRes.json();
-    const adminAssignment = assignmentsData.value.find(a =>
-      a.resourceId === spId &&
-      a.appRoleId === adminRoleId
-    );
+    console.log(`[DEMOTE DEBUG] Found ${assignmentsData.value?.length || 0} assignments`);
+    console.log(`[DEMOTE DEBUG] Looking for spId: ${spId}, adminRoleId: ${adminRoleId}`);
+
+    const adminAssignment = assignmentsData.value.find(a => {
+      console.log(`[DEMOTE DEBUG] Checking assignment:`, {
+        id: a.id,
+        principalId: a.principalId,
+        resourceId: a.resourceId,
+        appRoleId: a.appRoleId
+      });
+      return a.resourceId === spId && a.appRoleId === adminRoleId;
+    });
+
+    console.log(`[DEMOTE DEBUG] Found admin assignment:`, adminAssignment);
 
     if (adminAssignment) {
       const deleteUrl = `https://graph.microsoft.com/v1.0/appRoleAssignments/${adminAssignment.id}`;
+      console.log(`[DEMOTE DEBUG] Deleting assignment at: ${deleteUrl}`);
       const deleteRes = await fetch(deleteUrl, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${graphToken}` }
@@ -286,6 +303,9 @@ async function setUserRole(userId, role) {
         const text = await deleteRes.text();
         throw new Error(`Failed to remove Admin role: ${deleteRes.status} ${deleteRes.statusText} - ${text}`);
       }
+      console.log(`[DEMOTE DEBUG] Successfully deleted admin assignment`);
+    } else {
+      console.log(`[DEMOTE DEBUG] No admin assignment found to delete`);
     }
 
     return { success: true, action: 'removed', role: 'user' };
