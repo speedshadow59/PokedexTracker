@@ -216,20 +216,40 @@ function setupAdminDashboardTabs() {
             if (action === 'demote') mappedAction = 'demoteAdmin';
             if (action === 'block') mappedAction = 'blockUser';
             if (action === 'unblock') mappedAction = 'unblockUser';
-            const res = await fetch(`/api/useradmin?action=${mappedAction}`, {
+
+            // First, perform the action
+            const actionRes = await fetch(`/api/useradmin?action=${mappedAction}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({ userId, action: mappedAction })
             });
-            if (!res.ok) throw new Error('Failed to update user');
+            if (!actionRes.ok) throw new Error('Failed to update user');
 
-            // Show success message and reload immediately
-            panel.innerHTML = '<div class="success-message">User updated successfully! Reloading...</div>';
+            // Then, check the updated user list to verify the change
+            const listRes = await fetch('/api/useradmin?action=listUsers', { credentials: 'include' });
+            if (!listRes.ok) throw new Error('Failed to verify user update');
 
-            // Brief delay for Microsoft Graph propagation, then refresh
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await loadAdminUsers();
+            const data = await listRes.json();
+            const updatedUser = (data.users || []).find(u => u.id === userId);
+
+            if (!updatedUser) throw new Error('User not found in updated list');
+
+            // Check if the action actually took effect
+            let actionSucceeded = false;
+            if (action === 'promote' && updatedUser.isAdmin) actionSucceeded = true;
+            if (action === 'demote' && !updatedUser.isAdmin) actionSucceeded = true;
+            if (action === 'block' && updatedUser.blocked) actionSucceeded = true;
+            if (action === 'unblock' && !updatedUser.blocked) actionSucceeded = true;
+
+            if (actionSucceeded) {
+                panel.innerHTML = '<div class="success-message">User updated successfully!</div>';
+            } else {
+                panel.innerHTML = '<div class="error-message">Action completed but change not reflected yet. Please wait...</div>';
+            }
+
+            // Reload the full user list after a brief delay
+            setTimeout(() => loadAdminUsers(), 2000);
         } catch (err) {
             panel.innerHTML = '<div class="error-message">Failed to update user. Please try again.</div>';
             // Reload the user list after showing error
