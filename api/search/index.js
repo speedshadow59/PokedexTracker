@@ -1,4 +1,4 @@
-const { connectToDatabase, getClientPrincipal } = require('../shared/utils');
+const { connectToDatabase, getClientPrincipal, getGraphToken, findUserByIdentifier } = require('../shared/utils');
 const { REGIONS } = require('../shared/pokemonData');
 
 const MAX_ITEMS = 300;
@@ -88,6 +88,21 @@ function parseBoolean(value) {
 module.exports = async function (context, req) {
   try {
     const principal = getClientPrincipal(req);
+    
+    // Resolve userId to Graph API id for consistent querying
+    let resolvedUserId = principal?.userId;
+    if (principal?.userDetails) {
+      try {
+        const graphUser = await findUserByIdentifier(principal.userDetails);
+        if (graphUser) {
+          resolvedUserId = graphUser.id;
+          context.log('search: resolved principal userId', principal.userId, 'to Graph id', resolvedUserId);
+        }
+      } catch (err) {
+        context.log('search: error resolving userId', err.message);
+      }
+    }
+    
     const searchConfig = getSearchConfig();
     const query = (req.query.q || req.query.query || (req.body && req.body.query) || '').trim();
     const regionFilter = (req.query.region || (req.body && req.body.region) || '').toLowerCase();
@@ -126,7 +141,7 @@ module.exports = async function (context, req) {
           // Now query user data from Cosmos DB to merge
           const db = await connectToDatabase();
           const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
-          const userdexDocs = await userdexCol.find({ userId: principal.userId }).toArray();
+          const userdexDocs = await userdexCol.find({ userId: resolvedUserId }).toArray();
           const userdexMap = {};
           for (const doc of userdexDocs) {
             userdexMap[doc.pokemonId] = doc;
@@ -229,7 +244,7 @@ module.exports = async function (context, req) {
     const userdexCol = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
     let userdexDocs = [];
     try {
-      userdexDocs = await userdexCol.find({ userId: principal.userId }).limit(MAX_ITEMS).toArray();
+      userdexDocs = await userdexCol.find({ userId: resolvedUserId }).limit(MAX_ITEMS).toArray();
     } catch (err) {
       context.res = { status: 500, headers: { 'Content-Type': 'application/json' }, body: { error: 'Failed to query user data', details: err && err.stack } };
       return;
