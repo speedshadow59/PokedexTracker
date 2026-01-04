@@ -1072,3 +1072,10 @@ body {
 .profile-info span {
     color: #6b7280;
 }
+
+/* Profile Statistics Styling */
+.profile-info strong {
+    display: inline-block;
+    min-width: 120px;
+    color: #374151;
+}

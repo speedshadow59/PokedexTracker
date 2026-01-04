@@ -260,12 +260,64 @@ module.exports = async function (context, req) {
                 
                 const accountEnabled = userData.accountEnabled;
                 const blocked = accountEnabled === false || accountEnabled === null || accountEnabled === undefined;
+                
+                // Get Pokemon statistics for this user
+                let pokemonStats = {};
+                try {
+                    const db = await connectToDatabase();
+                    const userdexCollection = db.collection(process.env.COSMOS_DB_COLLECTION_NAME || 'userdex');
+                    
+                    // Get all caught Pokemon for this user
+                    const userPokemon = await userdexCollection.find({ 
+                        userId: userData.id,
+                        caught: true 
+                    }).toArray();
+                    
+                    const totalCaught = userPokemon.length;
+                    const shinyCaught = userPokemon.filter(p => p.shiny).length;
+                    const screenshotsCount = userPokemon.filter(p => p.screenshot || p.screenshotShiny).length;
+                    
+                    // Get last activity (most recent update)
+                    const lastActivity = userPokemon.length > 0 
+                        ? userPokemon
+                            .map(p => p.updatedAt || p.createdAt)
+                            .filter(date => date)
+                            .sort((a, b) => new Date(b) - new Date(a))[0]
+                        : null;
+                    
+                    // Calculate completion percentage (total Pokemon in Pokedex is ~1010)
+                    const totalPokemonInPokedex = 1010; // Approximate total Pokemon across all generations
+                    const completionPercentage = totalPokemonInPokedex > 0 
+                        ? Math.round((totalCaught / totalPokemonInPokedex) * 100 * 100) / 100 // Round to 2 decimal places
+                        : 0;
+                    
+                    pokemonStats = {
+                        totalCaught,
+                        shinyCaught,
+                        completionPercentage,
+                        screenshotsCount,
+                        lastActivity: lastActivity ? new Date(lastActivity).toISOString() : null
+                    };
+                    
+                    context.log('useradmin: pokemon stats calculated', pokemonStats);
+                } catch (statsErr) {
+                    context.log('useradmin: failed to get pokemon stats', statsErr.message);
+                    pokemonStats = {
+                        totalCaught: 0,
+                        shinyCaught: 0,
+                        completionPercentage: 0,
+                        screenshotsCount: 0,
+                        lastActivity: null
+                    };
+                }
+                
                 const user = {
                     id: userData.id,
                     name: userData.displayName || userData.userPrincipalName || userData.mail,
                     email: userData.mail || userData.userPrincipalName,
                     isAdmin: roles.includes('Admin'),
-                    blocked: blocked
+                    blocked: blocked,
+                    pokemonStats
                 };
                 context.log('useradmin: user fetched', user);
                 context.res = { status: 200, body: { user, rawGraph: userData } };

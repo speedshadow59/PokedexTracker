@@ -1884,6 +1884,13 @@ async function showProfileModal() {
             <div class="profile-info"><strong>Email:</strong> <span>${user.email || 'N/A'}</span></div>
             <div class="profile-info"><strong>Account Enabled:</strong> <span>${user.blocked ? 'No' : 'Yes'}</span></div>
             <div class="profile-info"><strong>Admin Role:</strong> <span>${user.isAdmin ? 'Yes' : 'No'}</span></div>
+            <hr style="margin: 15px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <h3 style="margin: 15px 0 10px 0; color: #3730a3; font-size: 16px;">Pokédex Statistics</h3>
+            <div class="profile-info"><strong>Total Caught:</strong> <span>${user.pokemonStats?.totalCaught || 0}</span></div>
+            <div class="profile-info"><strong>Shiny Caught:</strong> <span>${user.pokemonStats?.shinyCaught || 0}</span></div>
+            <div class="profile-info"><strong>Completion:</strong> <span>${user.pokemonStats?.completionPercentage || 0}%</span></div>
+            <div class="profile-info"><strong>Screenshots:</strong> <span>${user.pokemonStats?.screenshotsCount || 0}</span></div>
+            ${user.pokemonStats?.lastActivity ? `<div class="profile-info"><strong>Last Activity:</strong> <span>${new Date(user.pokemonStats.lastActivity).toLocaleDateString()}</span></div>` : ''}
         `;
     } catch (error) {
         console.error('Profile load error:', error);
