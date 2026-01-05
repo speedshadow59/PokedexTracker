@@ -681,6 +681,59 @@ body {
     background: #4b5563;
 }
 
+.header-btn {
+    min-width: 120px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    display: inline-block;
+}
+
+.header-btn.save-btn {
+    background: var(--button-bg);
+    color: white;
+}
+
+.header-btn.save-btn:hover {
+    background: var(--button-hover);
+}
+
+.header-btn.back-btn {
+    background: #6b7280;
+    color: white;
+}
+
+.header-btn.back-btn:hover {
+    background: #4b5563;
+}
+
+.header-btn.auth-link {
+    padding: 8px 12px;
+    font-size: 14px;
+    min-width: 80px;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.status-badge {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #e5e7eb;
+    color: #374151;
+    white-space: nowrap;
+}
+
 .loading-spinner {
     text-align: center;
     padding: 60px 20px;

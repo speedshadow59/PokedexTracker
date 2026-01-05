@@ -17,20 +17,20 @@
                 <div class="progress-fill" id="progressFill"></div>
             </div>
         </div>
-        <div class="actions" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-            <button id="statsBtn" class="save-btn" style="padding: 6px 12px;">📊 Stats</button>
-            <button id="themeToggle" class="save-btn" style="padding: 6px 12px;">🌙 Dark</button>
-            <button id="exportBtn" class="save-btn" style="padding: 6px 12px;">Export Data</button>
-            <label class="import-label" style="cursor: pointer;">
-                <span class="back-btn" style="padding: 6px 12px; display: inline-block;">Import Data</span>
+        <div class="actions">
+            <button id="statsBtn" class="header-btn save-btn">📊 Stats</button>
+            <button id="themeToggle" class="header-btn save-btn">🌙 Dark</button>
+            <button id="exportBtn" class="header-btn save-btn">Export Data</button>
+            <label class="import-label">
+                <span class="header-btn back-btn">Import Data</span>
                 <input type="file" id="importFile" accept="application/json" style="display:none;" />
             </label>
-            <button id="shareBtn" class="save-btn" style="padding: 6px 12px;">Share Pokédex</button>
-            <button id="adminDashboardBtn" class="save-btn" style="padding: 6px 12px; display:none;">Admin Dashboard</button>
-            <span id="backendStatus" style="padding: 4px 8px; border-radius: 6px; font-size: 12px; background: #eee; color: #333;">Cloud Sync: Checking…</span>
+            <button id="shareBtn" class="header-btn save-btn">Share Pokédex</button>
+            <button id="adminDashboardBtn" class="header-btn save-btn" style="display:none;">Admin Dashboard</button>
+            <span id="backendStatus" class="status-badge">Cloud Sync: Checking…</span>
             <span id="userInfo" class="user-badge" style="display:none;"><span class="status-dot"></span><span id="userNameLabel">Signed in</span></span>
-            <a href="/.auth/login/aad" id="loginLink" class="auth-link login">Sign in</a>
-            <a href="/.auth/logout" id="logoutLink" class="auth-link logout" style="display:none;">Sign out</a>
+            <a href="/.auth/login/aad" id="loginLink" class="header-btn auth-link login">Sign in</a>
+            <a href="/.auth/logout" id="logoutLink" class="header-btn auth-link logout" style="display:none;">Sign out</a>
         </div>
     </div>
 </header>
