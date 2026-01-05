@@ -69,6 +69,13 @@ module.exports = async function (context, req) {
     } catch (error) {
       context.log('Container may already exist or error creating:', error.message);
     }
+    
+    // Ensure container has public blob access
+    try {
+      await containerClient.setAccessPolicy('blob');
+    } catch (error) {
+      context.log('Error setting container access policy:', error.message);
+    }
 
     // Generate unique blob name
     const fileExtension = fileName ? fileName.split('.').pop() : 'png';
