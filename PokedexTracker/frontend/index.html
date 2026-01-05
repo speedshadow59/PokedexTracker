@@ -167,19 +167,6 @@
 <!-- Toast Notifications -->
 <div id="toastContainer" class="toast-container"></div>
 
-<!-- Media Lightbox -->
-<div id="mediaLightbox" class="lightbox" style="display: none;">
-    <div class="lightbox-content">
-        <span class="lightbox-close" id="lightboxClose">&times;</span>
-        <img id="lightboxImage" src="" alt="Media">
-        <div class="lightbox-controls">
-            <button id="lightboxPrev" class="lightbox-btn">‹</button>
-            <span id="lightboxCounter">1 / 1</span>
-            <button id="lightboxNext" class="lightbox-btn">›</button>
-        </div>
-    </div>
-</div>
-
 <script>
 // Toast notification system
 function showToast(message, type = 'success', duration = 3000) {
@@ -228,10 +215,6 @@ function showToast(message, type = 'success', duration = 3000) {
                 <div class="form-group">
                     <label for="screenshotUpload">Screenshots & Media:</label>
                     <input type="file" id="screenshotUpload" accept="image/*" multiple>
-                    <div id="mediaGallery" class="media-gallery">
-                        <div class="media-count" id="mediaCount">0 media files</div>
-                        <div class="media-grid" id="mediaGrid"></div>
-                    </div>
                 </div>
                 <div class="modal-actions">
                     <button id="saveBtn" class="save-btn">Save</button>

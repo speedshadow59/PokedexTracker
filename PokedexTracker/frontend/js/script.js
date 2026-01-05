@@ -2140,115 +2140,7 @@ function loadSavedTheme() {
     updateThemeToggleButton();
 }
 
-// Media Gallery Functions
-function showMediaGallery() {
-    const gallerySection = document.getElementById('mediaGallery');
-    if (!gallerySection) return;
-
-    // Toggle visibility
-    const isVisible = gallerySection.style.display !== 'none';
-    gallerySection.style.display = isVisible ? 'none' : 'block';
-
-    if (!isVisible) {
-        // Load and display media
-        loadMediaGallery();
-    }
-}
-
-async function loadMediaGallery() {
-    const galleryGrid = document.getElementById('mediaGrid');
-    if (!galleryGrid) return;
-
-    galleryGrid.innerHTML = '<div class="loading">Loading media...</div>';
-
-    try {
-        // Get media from caught data (local)
-        const caughtData = getCaughtData();
-        const mediaItems = [];
-
-        Object.entries(caughtData).forEach(([pokemonId, data]) => {
-            if (data.screenshot) {
-                const pokemon = currentPokemonList.find(p => p.id == pokemonId);
-                if (pokemon) {
-                    mediaItems.push({
-                        pokemonId: parseInt(pokemonId),
-                        pokemonName: pokemon.name,
-                        screenshot: data.screenshot,
-                        shiny: data.shiny,
-                        timestamp: data.timestamp
-                    });
-                }
-            }
-        });
-
-        // Sort by timestamp (newest first)
-        mediaItems.sort((a, b) => b.timestamp - a.timestamp);
-
-        if (mediaItems.length === 0) {
-            galleryGrid.innerHTML = '<div class="no-data">No screenshots found</div>';
-            return;
-        }
-
-        let html = '';
-        mediaItems.forEach(item => {
-            const shinyBadge = item.shiny ? ' <span class="shiny-badge">✨</span>' : '';
-            html += `
-                <div class="media-item" onclick="openLightbox('${item.screenshot}', '${item.pokemonName}', ${item.shiny})">
-                    <img src="${item.screenshot}" alt="${item.pokemonName}" class="media-thumbnail">
-                    <div class="media-overlay">
-                        <div class="media-info">
-                            <div class="media-name">${item.pokemonName}${shinyBadge}</div>
-                            <div class="media-date">${new Date(item.timestamp).toLocaleDateString()}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        galleryGrid.innerHTML = html;
-
-    } catch (error) {
-        galleryGrid.innerHTML = '<div class="error">Failed to load media gallery</div>';
-    }
-}
-
-function openLightbox(imageSrc, pokemonName, isShiny) {
-    const lightbox = document.getElementById('lightbox');
-    const lightboxImg = document.getElementById('lightboxImg');
-    const lightboxCaption = document.getElementById('lightboxCaption');
-
-    if (!lightbox || !lightboxImg || !lightboxCaption) return;
-
-    lightboxImg.src = imageSrc;
-    lightboxImg.alt = pokemonName;
-    lightboxCaption.textContent = `${pokemonName}${isShiny ? ' ✨' : ''}`;
-
-    lightbox.style.display = 'flex';
-
-    // Close lightbox on click outside image
-    lightbox.onclick = (e) => {
-        if (e.target === lightbox) {
-            closeLightbox();
-        }
-    };
-
-    // Close on escape key
-    document.addEventListener('keydown', handleLightboxKeydown);
-}
-
-function closeLightbox() {
-    const lightbox = document.getElementById('lightbox');
-    if (lightbox) {
-        lightbox.style.display = 'none';
-    }
-    document.removeEventListener('keydown', handleLightboxKeydown);
-}
-
-function handleLightboxKeydown(e) {
-    if (e.key === 'Escape') {
-        closeLightbox();
-    }
-}
-
+// Initialize new features on page load
 // Initialize new features on page load
 document.addEventListener('DOMContentLoaded', () => {
     // Load saved theme
@@ -2263,15 +2155,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {
         themeToggle.addEventListener('click', toggleDarkMode);
-    }
-
-    const mediaBtn = document.getElementById('mediaBtn');
-    if (mediaBtn) {
-        mediaBtn.addEventListener('click', showMediaGallery);
-    }
-
-    const closeLightboxBtn = document.getElementById('closeLightbox');
-    if (closeLightboxBtn) {
-        closeLightboxBtn.addEventListener('click', closeLightbox);
     }
 });
