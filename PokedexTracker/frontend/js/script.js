@@ -1468,53 +1468,66 @@ async function openPokemonModal(pokemon) {
     const modal = document.getElementById('pokemonModal');
     const sprite = caughtInfo.shiny ? pokemon.spriteShiny : pokemon.sprite;
     
-    document.getElementById('modalSprite').src = sprite;
-    document.getElementById('modalName').textContent = pokemon.name;
-    document.getElementById('modalNumber').textContent = `#${String(pokemon.id).padStart(3, '0')}`;
+    const modalSprite = document.getElementById('modalSprite');
+    if (modalSprite) modalSprite.src = sprite;
+    
+    const modalName = document.getElementById('modalName');
+    if (modalName) modalName.textContent = pokemon.name;
+    
+    const modalNumber = document.getElementById('modalNumber');
+    if (modalNumber) modalNumber.textContent = `#${String(pokemon.id).padStart(3, '0')}`;
     
     const typesHtml = pokemon.types.map(type => 
         `<span class="pokemon-type type-${type}">${type}</span>`
     ).join('');
-    document.getElementById('modalTypes').innerHTML = typesHtml;
+    const modalTypes = document.getElementById('modalTypes');
+    if (modalTypes) modalTypes.innerHTML = typesHtml;
     
     // Set form values
-    document.getElementById('shinyToggle').checked = caughtInfo.shiny || false;
-    document.getElementById('catchNotes').value = caughtInfo.notes || '';
+    const shinyToggle = document.getElementById('shinyToggle');
+    if (shinyToggle) shinyToggle.checked = caughtInfo.shiny || false;
+    
+    const catchNotes = document.getElementById('catchNotes');
+    if (catchNotes) catchNotes.value = caughtInfo.notes || '';
     
     // Handle screenshot preview
     const previewDiv = document.getElementById('screenshotPreview');
-    if (caughtInfo.screenshot) {
-        previewDiv.innerHTML = `
-            <div style="position: relative; display: inline-block;">
-                <img src="${caughtInfo.screenshot}" alt="Screenshot" style="max-width: 100%; border-radius: 6px; border: 1px solid #d1d5db;">
-                <button id="deleteScreenshotBtn" style="position: absolute; top: 5px; right: 5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1;">×</button>
-            </div>
-        `;
-        // Add event listener for delete button
-        setTimeout(() => {
-            const deleteBtn = document.getElementById('deleteScreenshotBtn');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', deleteScreenshot);
-            }
-        }, 0);
-    } else {
-        previewDiv.innerHTML = '';
+    if (previewDiv) {
+        if (caughtInfo.screenshot) {
+            previewDiv.innerHTML = `
+                <div style="position: relative; display: inline-block;">
+                    <img src="${caughtInfo.screenshot}" alt="Screenshot" style="max-width: 100%; border-radius: 6px; border: 1px solid #d1d5db;">
+                    <button id="deleteScreenshotBtn" style="position: absolute; top: 5px; right: 5px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1;">×</button>
+                </div>
+            `;
+            // Add event listener for delete button
+            setTimeout(() => {
+                const deleteBtn = document.getElementById('deleteScreenshotBtn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', deleteScreenshot);
+                }
+            }, 0);
+        } else {
+            previewDiv.innerHTML = '';
+        }
     }
     
     // Clear file input
-    document.getElementById('screenshotUpload').value = '';
+    const screenshotUpload = document.getElementById('screenshotUpload');
+    if (screenshotUpload) screenshotUpload.value = '';
     
     // Show/hide uncatch button
     const uncatchBtn = document.getElementById('uncatchBtn');
-    uncatchBtn.style.display = caughtInfo.caught ? 'block' : 'none';
+    if (uncatchBtn) uncatchBtn.style.display = caughtInfo.caught ? 'block' : 'none';
 
     applyModalAuthState();
     
-    modal.classList.add('show');
+    if (modal) modal.classList.add('show');
 }
 
 function closeModal() {
-    document.getElementById('pokemonModal').classList.remove('show');
+    const modal = document.getElementById('pokemonModal');
+    if (modal) modal.classList.remove('show');
     selectedPokemon = null;
 }
 
