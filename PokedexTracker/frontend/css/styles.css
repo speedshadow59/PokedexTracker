@@ -1201,8 +1201,8 @@ body {
     background: #fee2e2 !important;
     color: #b91c1c !important;
 }
-.media-actions .delete-btn {
-    display: inline-block;
+.media-item .media-actions .delete-btn {
+    display: inline-block !important;
 }
 
 /* Audit Log Styles */

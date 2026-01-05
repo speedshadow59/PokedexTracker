@@ -2048,13 +2048,10 @@ function updateTypeChart(typeStats) {
 
     let html = '';
     sortedTypes.forEach(([type, count]) => {
-        const percentage = Math.round((count / Object.values(typeStats).reduce((a, b) => a + b, 0)) * 100);
         html += `
-            <div class="chart-bar">
-                <div class="chart-label"><span class="pokemon-type type-${type.toLowerCase()}">${type}</span></div>
-                <div class="chart-bar-fill" style="width: ${percentage}%">
-                    <span class="chart-value">${count}</span>
-                </div>
+            <div class="type-item">
+                <span class="pokemon-type type-${type.toLowerCase()}">${type}</span>
+                <span class="type-count">${count}</span>
             </div>
         `;
     });
