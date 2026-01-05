@@ -1943,3 +1943,322 @@ async function showProfileModal() {
         }
     };
 }
+
+// Statistics Dashboard Functions
+function showStatisticsDashboard() {
+    const statsSection = document.getElementById('statsSection');
+    if (!statsSection) return;
+
+    // Toggle visibility
+    const isVisible = statsSection.style.display !== 'none';
+    statsSection.style.display = isVisible ? 'none' : 'block';
+
+    if (!isVisible) {
+        // Calculate and display statistics
+        calculateAndDisplayStats();
+    }
+}
+
+async function calculateAndDisplayStats() {
+    const caughtData = getCaughtData();
+    const totalPokemon = currentPokemonList.length;
+    const caughtPokemon = Object.keys(caughtData).length;
+    const shinyCount = Object.values(caughtData).filter(p => p.shiny).length;
+    const screenshotCount = Object.values(caughtData).filter(p => p.screenshot).length;
+
+    // Calculate type distribution
+    const typeStats = {};
+    Object.keys(caughtData).forEach(pokemonId => {
+        const pokemon = currentPokemonList.find(p => p.id == pokemonId);
+        if (pokemon) {
+            pokemon.types.forEach(type => {
+                typeStats[type] = (typeStats[type] || 0) + 1;
+            });
+        }
+    });
+
+    // Calculate region distribution (simplified)
+    const regionStats = {};
+    Object.keys(caughtData).forEach(pokemonId => {
+        const pokemon = currentPokemonList.find(p => p.id == pokemonId);
+        if (pokemon) {
+            const region = getRegionForPokemon(pokemon.id);
+            regionStats[region] = (regionStats[region] || 0) + 1;
+        }
+    });
+
+    // Update stats cards
+    document.getElementById('totalCaught').textContent = caughtPokemon;
+    document.getElementById('totalShiny').textContent = shinyCount;
+    document.getElementById('totalScreenshots').textContent = screenshotCount;
+    document.getElementById('completionRate').textContent = totalPokemon > 0 ? Math.round((caughtPokemon / totalPokemon) * 100) : 0;
+
+    // Update type distribution chart
+    updateTypeChart(typeStats);
+
+    // Update region distribution chart
+    updateRegionChart(regionStats);
+
+    // Show recent catches
+    await loadRecentCatches();
+}
+
+function updateTypeChart(typeStats) {
+    const chartContainer = document.getElementById('typeChart');
+    if (!chartContainer) return;
+
+    const sortedTypes = Object.entries(typeStats)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 8); // Top 8 types
+
+    let html = '';
+    sortedTypes.forEach(([type, count]) => {
+        const percentage = Math.round((count / Object.values(typeStats).reduce((a, b) => a + b, 0)) * 100);
+        html += `
+            <div class="chart-bar">
+                <div class="chart-label">${type}</div>
+                <div class="chart-bar-fill" style="width: ${percentage}%">
+                    <span class="chart-value">${count}</span>
+                </div>
+            </div>
+        `;
+    });
+    chartContainer.innerHTML = html;
+}
+
+function updateRegionChart(regionStats) {
+    const chartContainer = document.getElementById('regionChart');
+    if (!chartContainer) return;
+
+    const sortedRegions = Object.entries(regionStats)
+        .sort(([,a], [,b]) => b - a);
+
+    let html = '';
+    sortedRegions.forEach(([region, count]) => {
+        const percentage = Math.round((count / Object.values(regionStats).reduce((a, b) => a + b, 0)) * 100);
+        html += `
+            <div class="chart-bar">
+                <div class="chart-label">${region}</div>
+                <div class="chart-bar-fill" style="width: ${percentage}%">
+                    <span class="chart-value">${count}</span>
+                </div>
+            </div>
+        `;
+    });
+    chartContainer.innerHTML = html;
+}
+
+function getRegionForPokemon(pokemonId) {
+    // Simplified region mapping
+    if (pokemonId <= 151) return 'Kanto';
+    if (pokemonId <= 251) return 'Johto';
+    if (pokemonId <= 386) return 'Hoenn';
+    if (pokemonId <= 493) return 'Sinnoh';
+    if (pokemonId <= 649) return 'Unova';
+    if (pokemonId <= 721) return 'Kalos';
+    if (pokemonId <= 809) return 'Alola';
+    if (pokemonId <= 905) return 'Galar';
+    return 'Other';
+}
+
+async function loadRecentCatches() {
+    const recentList = document.getElementById('recentCatches');
+    if (!recentList) return;
+
+    try {
+        const caughtData = getCaughtData();
+        const recentEntries = Object.entries(caughtData)
+            .filter(([, data]) => data.timestamp)
+            .sort(([, a], [, b]) => b.timestamp - a.timestamp)
+            .slice(0, 5);
+
+        let html = '';
+        for (const [pokemonId, data] of recentEntries) {
+            const pokemon = currentPokemonList.find(p => p.id == pokemonId);
+            if (pokemon) {
+                const date = new Date(data.timestamp).toLocaleDateString();
+                const shinyBadge = data.shiny ? ' <span class="shiny-badge">✨</span>' : '';
+                html += `
+                    <div class="recent-catch">
+                        <img src="${data.shiny ? pokemon.spriteShiny : pokemon.sprite}" alt="${pokemon.name}" class="recent-sprite">
+                        <div class="recent-info">
+                            <div class="recent-name">${pokemon.name}${shinyBadge}</div>
+                            <div class="recent-date">${date}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        recentList.innerHTML = html || '<div class="no-data">No recent catches</div>';
+    } catch (error) {
+        recentList.innerHTML = '<div class="error">Failed to load recent catches</div>';
+    }
+}
+
+// Dark Mode Toggle Functions
+function toggleDarkMode() {
+    const body = document.body;
+    const isDark = body.classList.contains('dark-mode');
+
+    if (isDark) {
+        body.classList.remove('dark-mode');
+        localStorage.setItem('theme', 'light');
+    } else {
+        body.classList.add('dark-mode');
+        localStorage.setItem('theme', 'dark');
+    }
+
+    updateThemeToggleButton();
+}
+
+function updateThemeToggleButton() {
+    const toggleBtn = document.getElementById('themeToggle');
+    if (!toggleBtn) return;
+
+    const isDark = document.body.classList.contains('dark-mode');
+    toggleBtn.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+}
+
+function loadSavedTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+    updateThemeToggleButton();
+}
+
+// Media Gallery Functions
+function showMediaGallery() {
+    const gallerySection = document.getElementById('mediaGallery');
+    if (!gallerySection) return;
+
+    // Toggle visibility
+    const isVisible = gallerySection.style.display !== 'none';
+    gallerySection.style.display = isVisible ? 'none' : 'block';
+
+    if (!isVisible) {
+        // Load and display media
+        loadMediaGallery();
+    }
+}
+
+async function loadMediaGallery() {
+    const galleryGrid = document.getElementById('mediaGrid');
+    if (!galleryGrid) return;
+
+    galleryGrid.innerHTML = '<div class="loading">Loading media...</div>';
+
+    try {
+        // Get media from caught data (local)
+        const caughtData = getCaughtData();
+        const mediaItems = [];
+
+        Object.entries(caughtData).forEach(([pokemonId, data]) => {
+            if (data.screenshot) {
+                const pokemon = currentPokemonList.find(p => p.id == pokemonId);
+                if (pokemon) {
+                    mediaItems.push({
+                        pokemonId: parseInt(pokemonId),
+                        pokemonName: pokemon.name,
+                        screenshot: data.screenshot,
+                        shiny: data.shiny,
+                        timestamp: data.timestamp
+                    });
+                }
+            }
+        });
+
+        // Sort by timestamp (newest first)
+        mediaItems.sort((a, b) => b.timestamp - a.timestamp);
+
+        if (mediaItems.length === 0) {
+            galleryGrid.innerHTML = '<div class="no-data">No screenshots found</div>';
+            return;
+        }
+
+        let html = '';
+        mediaItems.forEach(item => {
+            const shinyBadge = item.shiny ? ' <span class="shiny-badge">✨</span>' : '';
+            html += `
+                <div class="media-item" onclick="openLightbox('${item.screenshot}', '${item.pokemonName}', ${item.shiny})">
+                    <img src="${item.screenshot}" alt="${item.pokemonName}" class="media-thumbnail">
+                    <div class="media-overlay">
+                        <div class="media-info">
+                            <div class="media-name">${item.pokemonName}${shinyBadge}</div>
+                            <div class="media-date">${new Date(item.timestamp).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        galleryGrid.innerHTML = html;
+
+    } catch (error) {
+        galleryGrid.innerHTML = '<div class="error">Failed to load media gallery</div>';
+    }
+}
+
+function openLightbox(imageSrc, pokemonName, isShiny) {
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    const lightboxCaption = document.getElementById('lightboxCaption');
+
+    if (!lightbox || !lightboxImg || !lightboxCaption) return;
+
+    lightboxImg.src = imageSrc;
+    lightboxImg.alt = pokemonName;
+    lightboxCaption.textContent = `${pokemonName}${isShiny ? ' ✨' : ''}`;
+
+    lightbox.style.display = 'flex';
+
+    // Close lightbox on click outside image
+    lightbox.onclick = (e) => {
+        if (e.target === lightbox) {
+            closeLightbox();
+        }
+    };
+
+    // Close on escape key
+    document.addEventListener('keydown', handleLightboxKeydown);
+}
+
+function closeLightbox() {
+    const lightbox = document.getElementById('lightbox');
+    if (lightbox) {
+        lightbox.style.display = 'none';
+    }
+    document.removeEventListener('keydown', handleLightboxKeydown);
+}
+
+function handleLightboxKeydown(e) {
+    if (e.key === 'Escape') {
+        closeLightbox();
+    }
+}
+
+// Initialize new features on page load
+document.addEventListener('DOMContentLoaded', () => {
+    // Load saved theme
+    loadSavedTheme();
+
+    // Add event listeners for new buttons
+    const statsBtn = document.getElementById('statsBtn');
+    if (statsBtn) {
+        statsBtn.addEventListener('click', showStatisticsDashboard);
+    }
+
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleDarkMode);
+    }
+
+    const mediaBtn = document.getElementById('mediaBtn');
+    if (mediaBtn) {
+        mediaBtn.addEventListener('click', showMediaGallery);
+    }
+
+    const closeLightboxBtn = document.getElementById('closeLightbox');
+    if (closeLightboxBtn) {
+        closeLightboxBtn.addEventListener('click', closeLightbox);
+    }
+});

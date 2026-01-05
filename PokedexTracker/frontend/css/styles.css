@@ -1,3 +1,349 @@
+/* CSS Variables for Theming */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --card-bg: #ffffff;
+    --border-color: #e5e7eb;
+    --header-bg: #f8fafc;
+    --button-bg: #3b82f6;
+    --button-hover: #2563eb;
+    --modal-bg: rgba(0, 0, 0, 0.5);
+    --input-bg: #ffffff;
+    --progress-bg: #e5e7eb;
+    --progress-fill: #10b981;
+}
+
+[data-theme="dark"] {
+    --bg-color: #1a1a1a;
+    --text-color: #ffffff;
+    --card-bg: #2d2d2d;
+    --border-color: #404040;
+    --header-bg: #2d2d2d;
+    --button-bg: #60a5fa;
+    --button-hover: #3b82f6;
+    --modal-bg: rgba(0, 0, 0, 0.8);
+    --input-bg: #404040;
+    --progress-bg: #404040;
+    --progress-fill: #34d399;
+}
+
+/* Base styles using CSS variables */
+html, body {
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.card, .modal-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+header {
+    background: var(--header-bg);
+}
+
+.save-btn, .primary-btn {
+    background: var(--button-bg);
+}
+
+.save-btn:hover, .primary-btn:hover {
+    background: var(--button-hover);
+}
+
+input, textarea, select {
+    background: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.modal {
+    background: var(--modal-bg);
+}
+
+/* Statistics Dashboard */
+.stats-section {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.stats-section .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.stats-section h2 {
+    margin: 0;
+    color: var(--text-color);
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-color);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.close-btn:hover {
+    background: var(--border-color);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+}
+
+.stat-card {
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+}
+
+.stat-card h3 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--button-bg);
+    margin-bottom: 4px;
+}
+
+.stat-subtitle {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--progress-bg);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--progress-fill);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.recent-catches {
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.recent-catches .no-data {
+    color: #999;
+    font-style: italic;
+    padding: 20px;
+}
+
+.recent-catch-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.recent-catch-item:last-child {
+    border-bottom: none;
+}
+
+.recent-catch-item img {
+    width: 32px;
+    height: 32px;
+}
+
+.recent-catch-item span {
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.stats-details h3 {
+    margin: 24px 0 16px 0;
+    color: var(--text-color);
+}
+
+.type-chart {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.type-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+}
+
+.type-item .type-count {
+    font-weight: bold;
+    color: var(--button-bg);
+}
+
+/* Media Gallery */
+.media-gallery {
+    margin-top: 12px;
+}
+
+.media-count {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.media-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.media-item:hover {
+    border-color: var(--button-bg);
+}
+
+.media-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.media-item .delete-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.media-item:hover .delete-btn {
+    display: flex;
+}
+
+/* Lightbox */
+.lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.lightbox-content img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+}
+
+.lightbox-controls {
+    position: absolute;
+    bottom: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: white;
+}
+
+.lightbox-btn {
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.lightbox-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Admin Dashboard Table Styles */
 .admin-table {
     width: 100%;

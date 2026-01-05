@@ -18,6 +18,8 @@
             </div>
         </div>
         <div class="actions" style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+            <button id="statsBtn" class="save-btn" style="padding: 6px 12px;">📊 Stats</button>
+            <button id="themeToggle" class="save-btn" style="padding: 6px 12px;">🌙 Dark</button>
             <button id="exportBtn" class="save-btn" style="padding: 6px 12px;">Export Data</button>
             <label class="import-label" style="cursor: pointer;">
                 <span class="back-btn" style="padding: 6px 12px; display: inline-block;">Import Data</span>
@@ -85,6 +87,43 @@
         </div>
     </section>
 
+    <!-- Statistics Dashboard -->
+    <section id="statsSection" class="stats-section card" style="display: none;">
+        <div class="section-header">
+            <h2>Pokédex Statistics</h2>
+            <button id="closeStatsBtn" class="close-btn">×</button>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Caught</h3>
+                <div class="stat-value" id="totalCaught">0</div>
+                <div class="stat-subtitle">of 1010 Pokémon</div>
+            </div>
+            <div class="stat-card">
+                <h3>Shiny Rate</h3>
+                <div class="stat-value" id="shinyRate">0%</div>
+                <div class="stat-subtitle" id="shinyCount">0 shinies</div>
+            </div>
+            <div class="stat-card">
+                <h3>Completion</h3>
+                <div class="stat-value" id="completionRate">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="completionFill"></div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <h3>Recent Catches</h3>
+                <div class="recent-catches" id="recentCatches">
+                    <div class="no-data">No recent catches</div>
+                </div>
+            </div>
+        </div>
+        <div class="stats-details">
+            <h3>Type Distribution</h3>
+            <div class="type-chart" id="typeChart"></div>
+        </div>
+    </section>
+
     <section id="pokedexSection" class="pokedex-section" style="display: none;">
         <div class="section-header">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
@@ -127,6 +166,19 @@
 
 <!-- Toast Notifications -->
 <div id="toastContainer" class="toast-container"></div>
+
+<!-- Media Lightbox -->
+<div id="mediaLightbox" class="lightbox" style="display: none;">
+    <div class="lightbox-content">
+        <span class="lightbox-close" id="lightboxClose">&times;</span>
+        <img id="lightboxImage" src="" alt="Media">
+        <div class="lightbox-controls">
+            <button id="lightboxPrev" class="lightbox-btn">‹</button>
+            <span id="lightboxCounter">1 / 1</span>
+            <button id="lightboxNext" class="lightbox-btn">›</button>
+        </div>
+    </div>
+</div>
 
 <script>
 // Toast notification system
@@ -174,9 +226,12 @@ function showToast(message, type = 'success', duration = 3000) {
                     <textarea id="catchNotes" placeholder="Add notes about how you caught this Pokémon..." rows="4"></textarea>
                 </div>
                 <div class="form-group">
-                    <label for="screenshotUpload">Screenshot:</label>
-                    <input type="file" id="screenshotUpload" accept="image/*">
-                    <div id="screenshotPreview" class="screenshot-preview"></div>
+                    <label for="screenshotUpload">Screenshots & Media:</label>
+                    <input type="file" id="screenshotUpload" accept="image/*" multiple>
+                    <div id="mediaGallery" class="media-gallery">
+                        <div class="media-count" id="mediaCount">0 media files</div>
+                        <div class="media-grid" id="mediaGrid"></div>
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button id="saveBtn" class="save-btn">Save</button>
