@@ -1624,8 +1624,8 @@ async function syncPokemonToBackend(pokemonId, pokemonData) {
         const userId = getUserId();
         console.log('syncPokemonToBackend: syncing pokemon', pokemonId, 'for user', userId);
         
-        // Prepare request body
-        const requestBody = {
+        // First, save the Pokemon data without screenshot
+        const initialRequestBody = {
             userId: userId,
             pokemonId: pokemonId,
             caught: pokemonData.caught,
@@ -1633,37 +1633,59 @@ async function syncPokemonToBackend(pokemonId, pokemonData) {
             notes: pokemonData.notes
         };
         
-        // Upload screenshot first if it's a new base64 image
-        if (pokemonData.screenshot && pokemonData.screenshot.startsWith('data:')) {
-            const screenshotUrl = await uploadScreenshotToBackend(pokemonId, pokemonData.screenshot);
-            if (screenshotUrl) {
-                requestBody.screenshot = screenshotUrl;
-            }
-        } else if (pokemonData.screenshot) {
-            // Existing screenshot URL
-            requestBody.screenshot = pokemonData.screenshot;
-        }
+        console.log('syncPokemonToBackend: initial save', initialRequestBody);
         
-        console.log('syncPokemonToBackend: sending request', requestBody);
-        
-        // Call backend API to save Pokemon data
-        const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
+        const initialResponse = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(initialRequestBody)
         });
         
-        console.log('syncPokemonToBackend: response status', response.status);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('syncPokemonToBackend: failed to sync', errorText);
+        if (!initialResponse.ok) {
+            const errorText = await initialResponse.text();
+            console.error('syncPokemonToBackend: failed initial save', errorText);
             showToast('Failed to sync to cloud. Check your connection.', 'error');
-        } else {
-            const responseData = await response.json();
-            console.log('syncPokemonToBackend: sync successful', responseData);
-            showToast('Synced to cloud!', 'success');
+            return;
         }
+        
+        // Now upload screenshot if present
+        let screenshotUrl = null;
+        if (pokemonData.screenshot && pokemonData.screenshot.startsWith('data:')) {
+            screenshotUrl = await uploadScreenshotToBackend(pokemonId, pokemonData.screenshot);
+        } else if (pokemonData.screenshot) {
+            screenshotUrl = pokemonData.screenshot;
+        }
+        
+        // If screenshot was uploaded or updated, update the entry
+        if (screenshotUrl) {
+            const updateRequestBody = {
+                userId: userId,
+                pokemonId: pokemonId,
+                caught: pokemonData.caught,
+                shiny: pokemonData.shiny,
+                notes: pokemonData.notes,
+                screenshot: screenshotUrl
+            };
+            
+            console.log('syncPokemonToBackend: updating with screenshot', updateRequestBody);
+            
+            const updateResponse = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updateRequestBody)
+            });
+            
+            if (!updateResponse.ok) {
+                const errorText = await updateResponse.text();
+                console.error('syncPokemonToBackend: failed to update with screenshot', errorText);
+                // Don't show error, as the Pokemon is already saved
+            } else {
+                const responseData = await updateResponse.json();
+                console.log('syncPokemonToBackend: update successful', responseData);
+            }
+        }
+        
+        showToast('Synced to cloud!', 'success');
     } catch (error) {
         console.error('syncPokemonToBackend: exception', error);
         showToast('Network error—data saved locally.', 'warning');

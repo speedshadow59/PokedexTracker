@@ -104,8 +104,8 @@ module.exports = async function (context, req) {
     // Check if the Pokemon is caught by the user
     const db = await connectToDatabase();
     const userdexCollection = db.collection('userdex');
-    const userDoc = await userdexCollection.findOne({ userId: userId });
-    if (!userDoc || !userDoc.caughtPokemon || !userDoc.caughtPokemon.includes(parseInt(pokemonId))) {
+    const existingEntry = await userdexCollection.findOne({ userId: userId, pokemonId: parseInt(pokemonId), caught: true });
+    if (!existingEntry) {
       // Delete the uploaded blob since Pokemon is not caught
       await blockBlobClient.deleteIfExists();
       context.res = {
