@@ -2006,11 +2006,12 @@ async function calculateAndDisplayStats() {
     const totalCaughtEl = document.getElementById('totalCaught');
     if (totalCaughtEl) totalCaughtEl.textContent = caughtPokemon;
     
-    const totalShinyEl = document.getElementById('totalShiny');
-    if (totalShinyEl) totalShinyEl.textContent = shinyCount;
+    const shinyRate = caughtPokemon > 0 ? Math.round((shinyCount / caughtPokemon) * 100) : 0;
+    const shinyRateEl = document.getElementById('shinyRate');
+    if (shinyRateEl) shinyRateEl.textContent = shinyRate + '%';
     
-    const totalScreenshotsEl = document.getElementById('totalScreenshots');
-    if (totalScreenshotsEl) totalScreenshotsEl.textContent = screenshotCount;
+    const shinyCountEl = document.getElementById('shinyCount');
+    if (shinyCountEl) shinyCountEl.textContent = shinyCount + ' shinies';
     
     const completionRateEl = document.getElementById('completionRate');
     if (completionRateEl) completionRateEl.textContent = totalPokemon > 0 ? Math.round((caughtPokemon / totalPokemon) * 100) : 0;
