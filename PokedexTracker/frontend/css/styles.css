@@ -195,8 +195,41 @@ input, textarea, select {
 
 .type-chart {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 8px;
+}
+
+.chart-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.chart-label {
+    min-width: 80px;
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.chart-bar-fill {
+    flex: 1;
+    height: 20px;
+    background: var(--border-color);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+    background: var(--progress-fill);
+}
+
+.chart-value {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--text-color);
 }
 
 .type-item {
@@ -1161,13 +1194,15 @@ body {
 }
 .media-actions {
     text-align: center;
+    margin-top: 20px;
+    min-height: 50px;
 }
 .delete-btn {
     background: #fee2e2 !important;
     color: #b91c1c !important;
 }
-.delete-btn:hover {
-    background: #fecaca !important;
+.media-actions .delete-btn {
+    display: inline-block;
 }
 
 /* Audit Log Styles */

@@ -2023,7 +2023,10 @@ async function calculateAndDisplayStats() {
     if (shinyCountEl) shinyCountEl.textContent = shinyCount + ' shinies';
     
     const completionRateEl = document.getElementById('completionRate');
-    if (completionRateEl) completionRateEl.textContent = totalPokemon > 0 ? Math.round((caughtPokemon / totalPokemon) * 100) : 0;
+    if (completionRateEl) completionRateEl.textContent = (totalPokemon > 0 ? Math.round((caughtPokemon / totalPokemon) * 100) : 0) + '%';
+    
+    const completionFillEl = document.getElementById('completionFill');
+    if (completionFillEl) completionFillEl.style.width = (totalPokemon > 0 ? Math.round((caughtPokemon / totalPokemon) * 100) : 0) + '%';
 
     // Update type distribution chart
     updateTypeChart(typeStats);
@@ -2048,7 +2051,7 @@ function updateTypeChart(typeStats) {
         const percentage = Math.round((count / Object.values(typeStats).reduce((a, b) => a + b, 0)) * 100);
         html += `
             <div class="chart-bar">
-                <div class="chart-label">${type}</div>
+                <div class="chart-label"><span class="pokemon-type type-${type.toLowerCase()}">${type}</span></div>
                 <div class="chart-bar-fill" style="width: ${percentage}%">
                     <span class="chart-value">${count}</span>
                 </div>
