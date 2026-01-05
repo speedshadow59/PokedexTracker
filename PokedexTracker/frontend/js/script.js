@@ -1543,7 +1543,9 @@ function handleScreenshotUpload(e) {
     const reader = new FileReader();
     reader.onload = function(event) {
         const previewDiv = document.getElementById('screenshotPreview');
-        previewDiv.innerHTML = `<img src="${event.target.result}" alt="Screenshot preview">`;
+        if (previewDiv) {
+            previewDiv.innerHTML = `<img src="${event.target.result}" alt="Screenshot preview">`;
+        }
     };
     reader.readAsDataURL(file);
 }
@@ -2001,10 +2003,17 @@ async function calculateAndDisplayStats() {
     });
 
     // Update stats cards
-    document.getElementById('totalCaught').textContent = caughtPokemon;
-    document.getElementById('totalShiny').textContent = shinyCount;
-    document.getElementById('totalScreenshots').textContent = screenshotCount;
-    document.getElementById('completionRate').textContent = totalPokemon > 0 ? Math.round((caughtPokemon / totalPokemon) * 100) : 0;
+    const totalCaughtEl = document.getElementById('totalCaught');
+    if (totalCaughtEl) totalCaughtEl.textContent = caughtPokemon;
+    
+    const totalShinyEl = document.getElementById('totalShiny');
+    if (totalShinyEl) totalShinyEl.textContent = shinyCount;
+    
+    const totalScreenshotsEl = document.getElementById('totalScreenshots');
+    if (totalScreenshotsEl) totalScreenshotsEl.textContent = screenshotCount;
+    
+    const completionRateEl = document.getElementById('completionRate');
+    if (completionRateEl) completionRateEl.textContent = totalPokemon > 0 ? Math.round((caughtPokemon / totalPokemon) * 100) : 0;
 
     // Update type distribution chart
     updateTypeChart(typeStats);
