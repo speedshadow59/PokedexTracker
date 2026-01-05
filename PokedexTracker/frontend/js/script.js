@@ -1627,6 +1627,15 @@ function finalizeSave(pokemonData) {
     // Update UI
     renderPokemonGrid();
     updateProgress();
+    
+    // Update modal to show screenshot if saved
+    if (pokemonData.screenshot) {
+        const previewDiv = document.getElementById('screenshotPreview');
+        if (previewDiv) {
+            previewDiv.innerHTML = `<img src="${pokemonData.screenshot}" alt="Screenshot">`;
+        }
+    }
+    
     closeModal();
 }
 
