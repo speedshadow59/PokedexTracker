@@ -1203,6 +1203,14 @@ body {
 }
 .media-item .media-actions .delete-btn {
     display: inline-block !important;
+    position: static !important;
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: none !important;
+    padding: 4px 10px !important;
+    border-radius: 4px !important;
+    font-size: 0.95em !important;
+    cursor: pointer !important;
 }
 
 /* Audit Log Styles */
