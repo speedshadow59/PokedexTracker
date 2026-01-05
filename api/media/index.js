@@ -1,4 +1,4 @@
-const { getBlobServiceClient, emitEvent, getClientPrincipal, getGraphToken, findUserByIdentifier } = require('../shared/utils');
+const { getBlobServiceClient, emitEvent, getClientPrincipal, getGraphToken, findUserByIdentifier, connectToDatabase } = require('../shared/utils');
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -100,6 +100,35 @@ module.exports = async function (context, req) {
 
     // Get the URL of the uploaded blob
     const blobUrl = blockBlobClient.url;
+
+    // Check if the Pokemon is caught by the user
+    const db = await connectToDatabase();
+    const userdexCollection = db.collection('userdex');
+    const userDoc = await userdexCollection.findOne({ userId: userId });
+    if (!userDoc || !userDoc.caughtPokemon || !userDoc.caughtPokemon.includes(parseInt(pokemonId))) {
+      // Delete the uploaded blob since Pokemon is not caught
+      await blockBlobClient.deleteIfExists();
+      context.res = {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Cannot upload media for uncaught Pokemon' }
+      };
+      return;
+    }
+
+    // Save metadata to Cosmos DB
+    const mediaCollection = db.collection('media');
+    const metadata = {
+      id: blobName,
+      userId: userId,
+      pokemonId: parseInt(pokemonId),
+      blobName: blobName,
+      blobUrl: blobUrl,
+      fileSize: buffer.length,
+      contentType: contentType || 'image/png',
+      timestamp: new Date()
+    };
+    await mediaCollection.insertOne(metadata);
 
     // Emit Event Grid event
     await emitEvent(

@@ -354,6 +354,35 @@ module.exports = async function (context, req) {
 
       context.log(`DELETE result: deletedCount=${result.deletedCount}`);
 
+      // If the entry was deleted, also delete associated media
+      if (result.deletedCount > 0) {
+        try {
+          const mediaCollection = db.collection('media');
+          const mediaDocs = await mediaCollection.find({ userId: userId, pokemonId: parseInt(pokemonId) }).toArray();
+          
+          for (const mediaDoc of mediaDocs) {
+            // Delete the blob
+            try {
+              const blobServiceClient = getBlobServiceClient();
+              const containerName = process.env.BLOB_STORAGE_CONTAINER_NAME || 'pokemon-media';
+              const containerClient = blobServiceClient.getContainerClient(containerName);
+              const blockBlobClient = containerClient.getBlockBlobClient(mediaDoc.blobName);
+              await blockBlobClient.deleteIfExists();
+              context.log(`Deleted media blob: ${mediaDoc.blobName}`);
+            } catch (blobError) {
+              context.log.warn('Error deleting media blob (continuing):', blobError.message);
+            }
+          }
+          
+          // Delete all media metadata
+          const mediaDeleteResult = await mediaCollection.deleteMany({ userId: userId, pokemonId: parseInt(pokemonId) });
+          context.log(`Deleted media metadata: ${mediaDeleteResult.deletedCount} documents`);
+        } catch (mediaError) {
+          context.log.warn('Error deleting associated media:', mediaError.message);
+          // Continue with response even if media deletion fails
+        }
+      }
+
       if (result.deletedCount === 0) {
         // Return 200 anyway (idempotent) - entry doesn't exist or already deleted
         context.res = {
