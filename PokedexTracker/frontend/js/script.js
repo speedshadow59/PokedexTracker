@@ -8,6 +8,7 @@ let currentPokemonList = [];
 let selectedPokemon = null;
 let currentUserPrincipal = null;
 let aiSearchEnabled = false;
+let isSharedView = false;
 let currentSearchResults = null;
 
 function isAuthenticated() {
@@ -94,6 +95,7 @@ function removeScreenshots(data) {
 
 // Load user's caught Pokemon data from backend
 async function loadUserCaughtData() {
+    if (isSharedView) return;
     try {
         const userId = getUserId();
         const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/userdex?userId=${userId}`);
@@ -144,13 +146,13 @@ document.addEventListener("DOMContentLoaded", () => {
     checkAdminAndShowDashboard();
     // Sync user data periodically
     setInterval(() => {
-        if (isAuthenticated()) {
+        if (isAuthenticated() && !isSharedView) {
             loadUserCaughtData();
         }
     }, 30000); // Sync every 30 seconds
     // Sync when page becomes visible
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && isAuthenticated()) {
+        if (document.visibilityState === 'visible' && isAuthenticated() && !isSharedView) {
             loadUserCaughtData();
         }
     });
@@ -564,6 +566,7 @@ function loadFromURL() {
     }
 // Show shared Pokedex in read-only mode
 async function showSharedPokedex(shareId) {
+    isSharedView = true;
     document.querySelector('.region-selector').style.display = 'none';
     document.getElementById('pokedexSection').style.display = 'block';
     document.getElementById('loadingSpinner').style.display = 'block';
