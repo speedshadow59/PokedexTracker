@@ -1262,6 +1262,8 @@ body {
   border-radius: 4px;
   width: auto;
   height: auto;
+  position: static;
+  display: inline-block;
 }
 
 /* Audit Log Styles */
