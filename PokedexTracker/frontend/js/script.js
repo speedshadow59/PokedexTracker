@@ -1552,30 +1552,40 @@ function handleScreenshotUpload(e) {
             
             // Analyze image immediately
             try {
+                console.log('Starting image analysis...');
                 const base64 = event.target.result.split(',')[1];
+                console.log('Base64 length:', base64.length);
                 const analysisResponse = await fetch(`${window.APP_CONFIG.API_BASE_URL}/analyzeimage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ imageBase64: base64 })
                 });
+                console.log('Analysis response status:', analysisResponse.status);
                 if (analysisResponse.ok) {
                     const analysisData = await analysisResponse.json();
+                    console.log('Analysis data:', analysisData);
                     let tags = (analysisData.tags || []).map(t => t.name).join(', ');
                     let desc = (analysisData.description && analysisData.description.captions && analysisData.description.captions[0]) ? analysisData.description.captions[0].text : '';
                     let objects = (analysisData.objects || []).map(o => o.object).join(', ');
-                    let analysisHtml = '<div class="image-analysis-results" style="margin-top:8px;">';
-                    if (desc) analysisHtml += `<div><b>Description:</b> ${desc}</div>`;
-                    if (tags) analysisHtml += `<div><b>Tags:</b> ${tags}</div>`;
-                    if (objects) analysisHtml += `<div><b>Objects:</b> ${objects}</div>`;
+                    console.log('Parsed results - desc:', desc, 'tags:', tags, 'objects:', objects);
+                    let analysisHtml = '<div class="image-analysis-results">';
+                    if (desc) analysisHtml += `<div><strong>Description:</strong> ${desc}</div>`;
+                    if (tags) analysisHtml += `<div><strong>Tags:</strong> ${tags}</div>`;
+                    if (objects) analysisHtml += `<div><strong>Objects:</strong> ${objects}</div>`;
                     if (!desc && !tags && !objects) analysisHtml += '<div>No recognizable content detected.</div>';
                     analysisHtml += '</div>';
+                    console.log('Generated HTML:', analysisHtml);
                     // Append analysis results to preview
                     previewDiv.innerHTML += analysisHtml;
+                    console.log('HTML appended to preview');
                 } else {
-                    previewDiv.innerHTML += '<div class="image-analysis-results" style="color:#b00;margin-top:8px;">Image analysis failed.</div>';
+                    const errorText = await analysisResponse.text();
+                    console.error('Analysis failed:', analysisResponse.status, errorText);
+                    previewDiv.innerHTML += '<div class="image-analysis-results" style="color:#b00;">Image analysis failed.</div>';
                 }
             } catch (err) {
-                previewDiv.innerHTML += '<div class="image-analysis-results" style="color:#b00;margin-top:8px;">Image analysis error.</div>';
+                console.error('Analysis error:', err);
+                previewDiv.innerHTML += '<div class="image-analysis-results" style="color:#b00;">Image analysis error.</div>';
             }
         }
     };
