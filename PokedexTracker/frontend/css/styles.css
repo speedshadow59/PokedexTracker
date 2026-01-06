@@ -698,11 +698,11 @@ body {
 }
 
 .header-btn {
-    width: 150px;
-    padding: 8px 12px;
+    width: 120px;
+    padding: 6px 8px;
     border: none;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -729,9 +729,9 @@ body {
 }
 
 .header-btn.auth-link {
-    padding: 8px 12px;
-    font-size: 14px;
-    min-width: 80px;
+    padding: 6px 8px;
+    font-size: 12px;
+    min-width: 70px;
 }
 
 .actions {
