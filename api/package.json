@@ -8,8 +8,9 @@
     "backfill:userdex:id": "node scripts/backfill-userdex-id.js"
   },
   "dependencies": {
-    "@azure/storage-blob": "^12.17.0",
     "@azure/eventgrid": "^5.0.0",
+    "@azure/storage-blob": "^12.17.0",
+    "axios": "^1.6.0",
     "mongodb": "^6.3.0",
     "uuid": "^9.0.0"
   },
