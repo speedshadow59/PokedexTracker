@@ -698,7 +698,7 @@ body {
 }
 
 .header-btn {
-    min-width: 120px;
+    width: 150px;
     padding: 8px 12px;
     border: none;
     border-radius: 6px;
