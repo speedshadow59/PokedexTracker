@@ -1542,12 +1542,12 @@ function handleScreenshotUpload(e) {
     }
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = function(event) {
         const previewDiv = document.getElementById('screenshotPreview');
         if (previewDiv) {
-            previewDiv.innerHTML = `<img src="${event.target.result}" alt="Screenshot preview">`;
+            previewDiv.innerHTML = `<div class=\"screenshot-preview\"><img src=\"${event.target.result}\" alt=\"Screenshot preview\"></div>`;
         }
     };
     reader.readAsDataURL(file);
@@ -1727,11 +1727,9 @@ async function uploadScreenshotToBackend(pokemonId, base64Data) {
     }
     try {
         const userId = getUserId();
-        
         // Extract content type from base64 string
         const matches = base64Data.match(/^data:(image\/\w+);base64,/);
         const contentType = matches ? matches[1] : 'image/png';
-        
         const requestBody = {
             userId: userId,
             pokemonId: pokemonId,
@@ -1739,13 +1737,42 @@ async function uploadScreenshotToBackend(pokemonId, base64Data) {
             fileName: `pokemon_${pokemonId}_screenshot.png`,
             contentType: contentType
         };
-        
+        // Analyze image before uploading
+        try {
+            const base64 = base64Data.split(',')[1];
+            const analysisResponse = await fetch(`${window.APP_CONFIG.API_BASE_URL}/analyzeimage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageBase64: base64 })
+            });
+            if (analysisResponse.ok) {
+                const analysisData = await analysisResponse.json();
+                let tags = (analysisData.tags || []).map(t => t.name).join(', ');
+                let desc = (analysisData.description && analysisData.description.captions && analysisData.description.captions[0]) ? analysisData.description.captions[0].text : '';
+                let objects = (analysisData.objects || []).map(o => o.object).join(', ');
+                let analysisHtml = '<div class="image-analysis-results" style="margin-top:8px;">';
+                if (desc) analysisHtml += `<div><b>Description:</b> ${desc}</div>`;
+                if (tags) analysisHtml += `<div><b>Tags:</b> ${tags}</div>`;
+                if (objects) analysisHtml += `<div><b>Objects:</b> ${objects}</div>`;
+                if (!desc && !tags && !objects) analysisHtml += '<div>No recognizable content detected.</div>';
+                analysisHtml += '</div>';
+                // Show in preview if available
+                const previewDiv = document.getElementById('screenshotPreview');
+                if (previewDiv) previewDiv.innerHTML += analysisHtml;
+            } else {
+                const previewDiv = document.getElementById('screenshotPreview');
+                if (previewDiv) previewDiv.innerHTML += '<div class="image-analysis-results" style="color:#b00;margin-top:8px;">Image analysis failed.</div>';
+            }
+        } catch (err) {
+            const previewDiv = document.getElementById('screenshotPreview');
+            if (previewDiv) previewDiv.innerHTML += '<div class="image-analysis-results" style="color:#b00;margin-top:8px;">Image analysis error.</div>';
+        }
+        // Now upload screenshot
         const response = await fetch(`${window.APP_CONFIG.API_BASE_URL}/media`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
-        
         if (response.ok) {
             const data = await response.json();
             showToast('Screenshot uploaded! 📷', 'success');
